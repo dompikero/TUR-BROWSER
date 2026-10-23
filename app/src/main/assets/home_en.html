@@ -51,6 +51,46 @@
 @keyframes targetPulse{0%,100%{box-shadow:inset 0 0 0 2px #ffffff,0 0 0 0 #14b4ca00}50%{box-shadow:inset 0 0 0 2px #ffffff,0 0 0 5px #14b4ca24}}
 @media(hover:hover){.site-tile:not(.editing):hover{transform:translateY(-3px);box-shadow:0 12px 28px #1d365a14;border-color:#cbeef4}.news-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px #1d365a13;border-color:#e2f3f7}}
 @media(prefers-reduced-motion:reduce){.site-tile,.news-card,.site-icon-wrap,.site-icon,.head-action,.refresh-btn,.privacy-card{transition:none!important}}
+
+/* v1.9: high-motion design system */
+body:before{content:"";position:fixed;inset:-14%;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 7% 8%,#d9f8ff80,transparent 34%),radial-gradient(ellipse at 92% 24%,#dce8ff85,transparent 32%),radial-gradient(ellipse at 60% 94%,#dcfff455,transparent 35%);animation:ambientDrift 18s ease-in-out infinite alternate}
+.page-shell{position:relative}
+.topline h1{animation:titleRise .75s cubic-bezier(.16,1,.3,1) both}
+.top-brand{animation:brandFloat 5.2s ease-in-out infinite;transition:transform .35s cubic-bezier(.2,1.35,.3,1)}
+.top-brand:active{transform:scale(.9) rotate(-8deg)}
+.hero{transform-origin:center;animation:heroRevealed .92s cubic-bezier(.16,1,.3,1) both}
+.hero:before{animation:orbit 19s linear infinite,haloBreathe 5s ease-in-out infinite}
+.hero:after{animation:orbit 13s linear infinite reverse,haloBreathe 7s ease-in-out infinite reverse}
+.section-head{animation:headSlide .58s cubic-bezier(.16,1,.3,1) both}
+.site-tile{will-change:transform;isolation:isolate}
+.site-tile:before{content:"";position:absolute;inset:0;opacity:0;pointer-events:none;background:linear-gradient(120deg,transparent 20%,#ffffffb0 48%,transparent 75%);transform:translateX(-120%);z-index:0}
+.site-tile:not(.editing):active:before{opacity:1;animation:tileShine .5s ease-out}
+.site-tile:not(.editing):active .site-name{color:#087aaa}
+.site-icon{transition:opacity .24s,transform .3s cubic-bezier(.2,1.3,.3,1),filter .3s;filter:drop-shadow(0 1px 1px #1e477d12)}
+.site-icon.icon-loaded{opacity:1}
+.site-icon-wrap .site-icon.icon-loaded{animation:iconSettle .42s cubic-bezier(.2,1.35,.3,1) both}
+.news-card{position:relative;overflow:hidden}
+.news-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;transform:scaleY(0);transform-origin:bottom;background:linear-gradient(#18d4d8,#1765d9);transition:transform .32s cubic-bezier(.16,1,.3,1)}
+.news-card:active:before{transform:scaleY(1)}
+.news-mark{box-shadow:inset 0 0 0 1px #ffffffd1,0 5px 12px #285a8c0a}
+.news-mark img.icon-loaded{animation:iconSettle .38s cubic-bezier(.2,1.35,.3,1) both}
+.privacy-icon{transition:transform .3s cubic-bezier(.2,1.35,.3,1)}
+.privacy-card:active .privacy-icon{transform:rotate(-9deg) scale(1.08)}
+.edit-hint{border:1px solid #ffe0de}
+#quickSection.editing-wrap .site-tile.drag-placeholder{animation:targetPulse 1s ease-in-out infinite}
+#quickSection.editing-wrap .drag-ghost{border-radius:24px;box-shadow:0 24px 52px #123d6a45;filter:saturate(1.12) contrast(1.02)}
+.tur-ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:9;background:radial-gradient(circle,#35cddd38 0%,#35cddd16 42%,transparent 72%);transform:scale(.05);animation:rippleExpand .52s cubic-bezier(.15,.75,.25,1) forwards}
+.head-action,.refresh-btn,.quick-control,.save-site{position:relative;overflow:hidden}
+@keyframes ambientDrift{from{transform:translate3d(-1.5%,-1%,0) scale(1)}to{transform:translate3d(1.5%,1%,0) scale(1.05)}}
+@keyframes titleRise{from{opacity:0;transform:translateY(12px);letter-spacing:-1.4px}to{opacity:1;transform:translateY(0);letter-spacing:-.75px}}
+@keyframes brandFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(2deg)}}
+@keyframes heroRevealed{from{opacity:0;transform:translateY(22px) scale(.96);filter:blur(6px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes headSlide{from{opacity:0;transform:translateX(-9px)}to{opacity:1;transform:translateX(0)}}
+@keyframes haloBreathe{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes tileShine{from{transform:translateX(-120%);opacity:0}25%{opacity:1}to{transform:translateX(120%);opacity:0}}
+@keyframes iconSettle{0%{opacity:0;transform:scale(.72) rotate(-5deg)}70%{opacity:1;transform:scale(1.08) rotate(1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes rippleExpand{to{transform:scale(2.5);opacity:0}}
+@media(prefers-reduced-motion:reduce){body:before,.top-brand,.top-brand:after,.hero,.hero:before,.hero:after,.hero-spark,.site-tile,.news-card,.site-icon,.news-mark img,.section,.section-head,.privacy-card{animation:none!important;transition:none!important}.tur-ripple{display:none}}
 </style></head>
 <body><main class="page-shell" id="pageShell">
 <div class="topline"><div class="greeting"><div class="eyebrow"><span class="live-dot"></span><span id="eyebrowText">KENDİ ALANIN</span></div><h1 id="greetingText">Merhaba, keşfetmeye hazır mısın?</h1></div><div class="top-brand" aria-label="TUR"><span class="brand-letter">T</span></div></div>
@@ -90,44 +130,34 @@ function persist(){try{localStorage.setItem('tur.quick-access.v3',JSON.stringify
 function safeUrl(raw){try{const s=raw.trim();const u=new URL(/^https?:\/\//i.test(s)?s:'https://'+s);return ['http:','https:'].includes(u.protocol)?u.href:null}catch(e){return null}}
 function iconImg(url){
  const img=document.createElement('img');
- img.className='site-icon';img.alt='';img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';
- img.draggable=false;
- let candidates=[];
+ img.className='site-icon';img.alt='';img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';img.draggable=false;
+ img.style.opacity='0';img.style.transform='scale(.82)';
+ let candidates=[],hostLabel='web',fallbackUsed=false;
  try{
    const site=new URL(url);
    const host=site.hostname.toLowerCase().replace(/^www\./,'');
+   hostLabel=host;
    const brandMap=[
-    [/^(google\.|google$)/,'google','4285F4'],[/^youtube\.com$/,'youtube','FF0033'],
-    [/^youtu\.be$/,'youtube','FF0033'],[/^instagram\.com$/,'instagram','E4405F'],
-    [/^wikipedia\.org$/,'wikipedia','000000'],[/^reddit\.com$/,'reddit','FF4500'],
-    [/^github\.com$/,'github','181717'],[/^twitch\.tv$/,'twitch','9146FF'],
-    [/^spotify\.com$/,'spotify','1DB954'],[/^discord\.com$/,'discord','5865F2'],
-    [/^discord\.gg$/,'discord','5865F2'],[/^amazon\./,'amazon','FF9900'],
-    [/^facebook\.com$/,'facebook','0866FF'],[/^x\.com$/,'x','000000'],
-    [/^twitter\.com$/,'x','000000'],[/^linkedin\.com$/,'linkedin','0A66C2'],
-    [/^pinterest\.com$/,'pinterest','BD081C'],[/^netflix\.com$/,'netflix','E50914'],
-    [/^gmail\.com$/,'gmail','EA4335'],[/^mail\.google\.com$/,'gmail','EA4335'],
-    [/^telegram\.org$/,'telegram','26A5E4'],[/^web\.whatsapp\.com$/,'whatsapp','25D366'],
-    [/^whatsapp\.com$/,'whatsapp','25D366'],[/^tiktok\.com$/,'tiktok','000000'],
-    [/^duckduckgo\.com$/,'duckduckgo','DE5833'],[/^microsoft\.com$/,'microsoft','5E5E5E'],
-    [/^microsoftedge\.microsoft\.com$/,'microsoftedge','0078D7'],[/^apple\.com$/,'apple','000000'],
-    [/^stackoverflow\.com$/,'stackoverflow','F58025'],[/^medium\.com$/,'medium','000000'],
-    [/^bbc\.com$/,'bbc','BB1919'],[/^bbc\.co\.uk$/,'bbc','BB1919'],
-    [/^cnn\.com$/,'cnn','CC0000'],[/^nytimes\.com$/,'nytimes','000000'],
-    [/^reuters\.com$/,'reuters','FF8000'],[/^theguardian\.com$/,'theguardian','052962'],
-    [/^shopify\.com$/,'shopify','7AB55C'],[/^notion\.so$/,'notion','000000'],
-    [/^figma\.com$/,'figma','F24E1E'],[/^canva\.com$/,'canva','00C4CC'],
+    [/^google\./,'google','4285F4'],[/^youtube\.com$/,'youtube','FF0033'],[/^youtu\.be$/,'youtube','FF0033'],
+    [/^instagram\.com$/,'instagram','E4405F'],[/^wikipedia\.org$/,'wikipedia','000000'],[/^reddit\.com$/,'reddit','FF4500'],
+    [/^github\.com$/,'github','181717'],[/^twitch\.tv$/,'twitch','9146FF'],[/^spotify\.com$/,'spotify','1DB954'],
+    [/^discord\.com$/,'discord','5865F2'],[/^discord\.gg$/,'discord','5865F2'],[/^amazon\./,'amazon','FF9900'],
+    [/^facebook\.com$/,'facebook','0866FF'],[/^x\.com$/,'x','000000'],[/^twitter\.com$/,'x','000000'],
+    [/^linkedin\.com$/,'linkedin','0A66C2'],[/^pinterest\.com$/,'pinterest','BD081C'],[/^netflix\.com$/,'netflix','E50914'],
+    [/^gmail\.com$/,'gmail','EA4335'],[/^mail\.google\.com$/,'gmail','EA4335'],[/^telegram\.org$/,'telegram','26A5E4'],
+    [/^web\.whatsapp\.com$/,'whatsapp','25D366'],[/^whatsapp\.com$/,'whatsapp','25D366'],[/^tiktok\.com$/,'tiktok','000000'],
+    [/^duckduckgo\.com$/,'duckduckgo','DE5833'],[/^microsoft\.com$/,'microsoft','5E5E5E'],[/^apple\.com$/,'apple','000000'],
+    [/^stackoverflow\.com$/,'stackoverflow','F58025'],[/^medium\.com$/,'medium','000000'],[/^bbc\.com$/,'bbc','BB1919'],
+    [/^bbc\.co\.uk$/,'bbc','BB1919'],[/^cnn\.com$/,'cnn','CC0000'],[/^nytimes\.com$/,'nytimes','000000'],
+    [/^reuters\.com$/,'reuters','FF8000'],[/^theguardian\.com$/,'theguardian','052962'],[/^shopify\.com$/,'shopify','7AB55C'],
+    [/^notion\.so$/,'notion','000000'],[/^figma\.com$/,'figma','F24E1E'],[/^canva\.com$/,'canva','00C4CC'],
     [/^openai\.com$/,'openai','412991'],[/^chatgpt\.com$/,'openai','412991']
    ];
    const match=brandMap.find(item=>item[0].test(host));
-   candidates=[];
    if(match)candidates.push('https://cdn.simpleicons.org/'+match[1]+'/'+match[2]);
    if(!match){
-     const parts=host.split('.');
-     const commonSecondLevel=['co','com','org','net','gov','ac','edu'];
-     const genericSlug=parts.length>=3&&commonSecondLevel.includes(parts[parts.length-2])
-       ?parts[parts.length-3]:parts[Math.max(0,parts.length-2)];
-     if(genericSlug&&genericSlug.length>1)candidates.push('https://cdn.simpleicons.org/'+genericSlug);
+     const slug=host.split('.').filter(Boolean).slice(-2, -1)[0];
+     if(slug&&slug.length>1)candidates.push('https://cdn.simpleicons.org/'+slug);
    }
    candidates.push(
      new URL('/favicon.svg',site).href,
@@ -141,18 +171,29 @@ function iconImg(url){
      'https://icons.duckduckgo.com/ip3/'+host+'.ico'
    );
  }catch(e){candidates=['https://www.google.com/s2/favicons?domain_url='+encodeURIComponent(url)+'&sz=256']}
- let attempt=0, tried=new Set();
+ let attempt=0,tried=new Set();
+ const reveal=()=>{img.classList.add('icon-loaded');img.style.opacity='1';img.style.transform='scale(1)'};
+ img.onload=reveal;
+ const setCrispFallback=()=>{
+   if(fallbackUsed)return;
+   fallbackUsed=true;img.onerror=null;img.onload=reveal;
+   const letter=(hostLabel.replace(/[^a-z0-9]/gi,'').charAt(0)||'W').toUpperCase();
+   const colors=['#0878d1','#0f9fae','#6754d8','#e06b43','#257c65'];
+   let hash=0;for(let i=0;i<hostLabel.length;i++)hash=(hash*31+hostLabel.charCodeAt(i))>>>0;
+   const a=colors[hash%colors.length],bb=colors[(hash+2)%colors.length];
+   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="'+a+'"/><stop offset="1" stop-color="'+bb+'"/></linearGradient></defs><rect width="128" height="128" rx="30" fill="url(#g)"/><circle cx="99" cy="25" r="35" fill="#fff" opacity=".11"/><text x="64" y="84" font-family="Arial,sans-serif" font-size="66" font-weight="700" text-anchor="middle" fill="#fff">'+letter+'</text></svg>';
+   img.src='data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg);
+ };
  const next=()=>{
    while(attempt<candidates.length){
      const nextUrl=candidates[attempt++];
-     if(tried.has(nextUrl))continue;
+     if(!nextUrl||tried.has(nextUrl))continue;
      tried.add(nextUrl);img.src=nextUrl;return;
    }
-   img.onerror=null;
-   img.style.opacity='.3';
+   setCrispFallback();
  };
  img.onerror=next;
- img.src=candidates[attempt++];
+ next();
  return img;
 }
 function renderQuick(){
@@ -168,7 +209,7 @@ function renderQuick(){
    tile.style.animationDelay=Math.min(index*35,280)+'ms';
    const wrap=document.createElement('span');wrap.className='site-icon-wrap';
    let img;
-   if(site.customIcon){img=document.createElement('img');img.className='site-icon';img.alt='';img.loading='lazy';img.decoding='async';img.src=site.customIcon;}
+   if(site.customIcon){img=document.createElement('img');img.className='site-icon icon-loaded';img.alt='';img.loading='lazy';img.decoding='async';img.draggable=false;img.onload=()=>{img.style.opacity='1';img.style.transform='scale(1)'};img.onerror=()=>{const fallback=iconImg(site.url);wrap.replaceChildren(fallback)};img.src=site.customIcon;}
    else img=iconImg(site.url);
    wrap.appendChild(img);tile.appendChild(wrap);
    const name=document.createElement('span');name.className='site-name';name.textContent=site.name;tile.appendChild(name);
@@ -328,4 +369,19 @@ function refreshNews(){const list=$('newsList');list.replaceChildren();for(let i
 function initText(){$('eyebrowText').textContent=T.eyebrow;$('greetingText').textContent=T.greeting;$('heroPillText').textContent=T.pill;$('heroTitle').innerHTML=T.heroTitle;$('heroSubtitle').textContent=T.heroSubtitle;$('quickKicker').textContent=T.quickKicker;$('quickTitle').textContent=T.quickTitle;$('editHint').textContent=T.editHint;$('newsKicker').textContent=T.newsKicker;$('newsTitle').textContent=T.newsTitle;$('liveText').textContent=T.live;$('privacyTitle').textContent=T.privacyTitle;$('privacyText').textContent=T.privacyText;$('footerText').textContent=T.footer}
 $('editQuick').addEventListener('click',()=>{editing=!editing;renderQuick();if(editing)$('editHint').scrollIntoView({behavior:'smooth',block:'nearest'})});$('refreshNews').addEventListener('click',refreshNews);$('closeModal').addEventListener('click',closeModal);$('siteModal').addEventListener('click',e=>{if(e.target===$('siteModal'))closeModal()});$('siteForm').addEventListener('submit',saveSite);document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('siteModal').hidden)closeModal()});window.renderTurNews=renderNews;initText();renderQuick()
 })();
+
+// Shared micro-interactions for cards and controls.
+document.addEventListener('pointerdown',function(event){
+ const target=event.target.closest('.site-tile:not(.editing),.news-card,.head-action,.refresh-btn,.quick-control,.save-site');
+ if(!target||event.button!==0||target.classList.contains('drag-placeholder'))return;
+ const rect=target.getBoundingClientRect();
+ const ripple=document.createElement('span');
+ ripple.className='tur-ripple';
+ const size=Math.max(rect.width,rect.height)*.72;
+ ripple.style.width=size+'px';ripple.style.height=size+'px';
+ ripple.style.left=(event.clientX-rect.left-size/2)+'px';
+ ripple.style.top=(event.clientY-rect.top-size/2)+'px';
+ target.appendChild(ripple);
+ ripple.addEventListener('animationend',()=>ripple.remove(),{once:true});
+},true);
 </script></body></html>

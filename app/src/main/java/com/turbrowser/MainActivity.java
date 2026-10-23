@@ -116,6 +116,9 @@ public class MainActivity extends Activity {
     private LinearLayout toolsPanel;
     private FrameLayout actionButtonFrame;
     private ImageView actionLogo;
+    private View actionPulseRing;
+    private TextView menuFooterStatus;
+    private TextView menuFooterTabs;
     private TextView actionCloseGlyph;
     private boolean toolsOpen = false;
     private final ArrayList<View> toolsCells = new ArrayList<>();
@@ -402,8 +405,8 @@ public class MainActivity extends Activity {
 
             @Override public void onPageFinished(WebView view, String url) {
                 progress.setVisibility(View.GONE);
-                view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(240)
-                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+                view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(320)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.16f, 1f, .3f, 1f)).start();
                 if (isHomeUrl(url)) {
                     addressBar.setText("");
                     loadNewsFeed(view);
@@ -492,7 +495,7 @@ public class MainActivity extends Activity {
         tabs.add(HOME_URL);
         tabGroupAssignments.add("");
         activeTab = tabs.size() - 1;
-        updateTabCountBadge();
+        updateTabCountBadge(); updateActionButton();
         updateTabCountBadge();
         if (!privateMode) {
             saveList("tabs", tabs);
@@ -540,6 +543,7 @@ public class MainActivity extends Activity {
 
     private void updateTabCountBadge() {
         if (tabCountBadge != null) tabCountBadge.setText(String.valueOf(Math.min(99, tabs.size())));
+        if (menuFooterTabs != null) menuFooterTabs.setText(tabs.size() + L(" SEKME", " TABS"));
     }
 
     private View homeNavItem() {
@@ -583,10 +587,18 @@ public class MainActivity extends Activity {
         gradient.setShape(GradientDrawable.OVAL);
         actionButtonFrame.setBackground(gradient);
         actionButtonFrame.setElevation(dp(5));
+        actionPulseRing = new View(this);
+        GradientDrawable pulseOutline = new GradientDrawable();
+        pulseOutline.setShape(GradientDrawable.OVAL);
+        pulseOutline.setColor(Color.TRANSPARENT);
+        pulseOutline.setStroke(dp(1), 0x99FFFFFF);
+        actionPulseRing.setBackground(pulseOutline);
+        FrameLayout.LayoutParams pulseLp = new FrameLayout.LayoutParams(dp(43), dp(43), Gravity.CENTER);
+        actionButtonFrame.addView(actionPulseRing, pulseLp);
+
         actionLogo = new ImageView(this);
-        actionLogo.setImageResource(R.drawable.ic_settings_gear);
+        actionLogo.setImageResource(R.drawable.ic_t_brand);
         actionLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        actionLogo.setPadding(dp(9), dp(9), dp(9), dp(9));
         FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(dp(45), dp(45), Gravity.CENTER);
         actionButtonFrame.addView(actionLogo, logoLp);
         actionCloseGlyph = text("×", 36, Color.WHITE, false);
@@ -595,9 +607,18 @@ public class MainActivity extends Activity {
         actionButtonFrame.addView(actionCloseGlyph, new FrameLayout.LayoutParams(-1, -1));
         actionButtonFrame.setContentDescription(L("Menüyü aç", "Open menu"));
         actionButtonFrame.setOnClickListener(v -> {
-            actionButtonFrame.animate().scaleX(0.88f).scaleY(0.88f).setDuration(95).withEndAction(() -> {
+            actionButtonFrame.animate().cancel();
+            actionLogo.animate().cancel();
+            actionPulseRing.animate().cancel();
+            actionPulseRing.setAlpha(.8f);
+            actionPulseRing.setScaleX(.92f);
+            actionPulseRing.setScaleY(.92f);
+            actionPulseRing.animate().alpha(0f).scaleX(1.48f).scaleY(1.48f).setDuration(360).start();
+            actionButtonFrame.animate().scaleX(.86f).scaleY(.86f).setDuration(100)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator()).withEndAction(() -> {
                 toggleToolsPanel();
-                actionButtonFrame.animate().scaleX(1f).scaleY(1f).setDuration(170).start();
+                actionButtonFrame.animate().scaleX(1f).scaleY(1f).setDuration(260)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(.8f)).start();
             }).start();
         });
         return actionButtonFrame;
@@ -608,8 +629,10 @@ public class MainActivity extends Activity {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(10), dp(5), dp(10), dp(8));
-        panel.setBackground(round(Color.WHITE, 27));
-        panel.setElevation(dp(18));
+        GradientDrawable panelSurface = round(0xFFF5F9FD, 27);
+        panelSurface.setStroke(dp(1), 0xFFDCEAF5);
+        panel.setBackground(panelSurface);
+        panel.setElevation(dp(22));
 
         View grabber = new View(this);
         grabber.setBackground(round(Color.rgb(214, 224, 235), 99));
@@ -621,27 +644,42 @@ public class MainActivity extends Activity {
         LinearLayout menuHeading = new LinearLayout(this);
         menuHeading.setOrientation(LinearLayout.HORIZONTAL);
         menuHeading.setGravity(Gravity.CENTER_VERTICAL);
-        menuHeading.setPadding(dp(5), dp(2), dp(5), dp(8));
+        menuHeading.setPadding(dp(11), dp(7), dp(9), dp(7));
+        GradientDrawable menuHero = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(9, 66, 151), Color.rgb(13, 135, 200), Color.rgb(24, 199, 208)});
+        menuHero.setCornerRadius(dp(21));
+        menuHeading.setBackground(menuHero);
+        menuHeading.setElevation(dp(3));
         ImageView brand = new ImageView(this);
         brand.setImageResource(R.drawable.ic_t_brand);
         brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        brand.setBackground(round(0xFFE6FAFC, 15));
-        menuHeading.addView(brand, new LinearLayout.LayoutParams(dp(37), dp(37)));
+        brand.setPadding(dp(5), dp(5), dp(5), dp(5));
+        brand.setBackground(round(0x35FFFFFF, 16));
+        menuHeading.addView(brand, new LinearLayout.LayoutParams(dp(43), dp(43)));
         LinearLayout headingLabels = new LinearLayout(this);
         headingLabels.setOrientation(LinearLayout.VERTICAL);
         headingLabels.setPadding(dp(10), 0, 0, 0);
-        headingLabels.addView(text("TUR", 13, ink, true));
-        TextView subtitle = text(L("Hızlı işlemler", "Quick actions"), 10, muted, false);
+        TextView menuEyebrow = text("TUR  /  BROWSER", 8, 0xDFFFFFFF, true);
+        menuEyebrow.setLetterSpacing(.14f);
+        headingLabels.addView(menuEyebrow);
+        TextView menuTitle = text(L("Her şey elinin altında", "Your browser, at a glance"), 13, Color.WHITE, true);
+        LinearLayout.LayoutParams menuTitleLp = new LinearLayout.LayoutParams(-1, -2);
+        menuTitleLp.topMargin = dp(3);
+        headingLabels.addView(menuTitle, menuTitleLp);
+        TextView subtitle = text(L("Hızlı işlemler ve ayarlar", "Quick actions and settings"), 9, 0xEFFFFFFF, false);
         LinearLayout.LayoutParams subtitleLp = new LinearLayout.LayoutParams(-1, -2);
         subtitleLp.topMargin = dp(2);
         headingLabels.addView(subtitle, subtitleLp);
         menuHeading.addView(headingLabels, new LinearLayout.LayoutParams(0, -2, 1));
         TextView closePill = text("×", 23, muted, false);
         closePill.setGravity(Gravity.CENTER);
-        closePill.setBackground(round(0xFFF0F4F8, 14));
+        closePill.setTextColor(Color.WHITE);
+        closePill.setBackground(round(0x35FFFFFF, 14));
         menuHeading.addView(closePill, new LinearLayout.LayoutParams(dp(34), dp(34)));
         closePill.setOnClickListener(v -> closeToolsPanel());
-        panel.addView(menuHeading, new LinearLayout.LayoutParams(-1, dp(42)));
+        LinearLayout.LayoutParams menuHeaderLp = new LinearLayout.LayoutParams(-1, dp(59));
+        menuHeaderLp.bottomMargin = dp(4);
+        panel.addView(menuHeading, menuHeaderLp);
 
         LinearLayout rowOne = toolRow();
         rowOne.addView(toolCell("◷", L("Geçmiş", "History"), 0,
@@ -669,9 +707,28 @@ public class MainActivity extends Activity {
         rowThree.addView(toolCell("▤", L("Sekme grupları", "Tab groups"), 10, this::showTabsDialog), toolCellParams());
         rowThree.addView(toolCell("◎", L("Gizlilik", "Privacy"), 11, this::showSettings), toolCellParams());
 
-        panel.addView(rowOne, new LinearLayout.LayoutParams(-1, dp(84)));
-        panel.addView(rowTwo, new LinearLayout.LayoutParams(-1, dp(84)));
-        panel.addView(rowThree, new LinearLayout.LayoutParams(-1, dp(84)));
+        panel.addView(rowOne, new LinearLayout.LayoutParams(-1, dp(78)));
+        panel.addView(rowTwo, new LinearLayout.LayoutParams(-1, dp(78)));
+        panel.addView(rowThree, new LinearLayout.LayoutParams(-1, dp(78)));
+
+        LinearLayout menuFooter = new LinearLayout(this);
+        menuFooter.setOrientation(LinearLayout.HORIZONTAL);
+        menuFooter.setGravity(Gravity.CENTER_VERTICAL);
+        menuFooter.setPadding(dp(10), dp(4), dp(10), dp(4));
+        menuFooter.setBackground(round(Color.WHITE, 13));
+        LinearLayout.LayoutParams footerLp = new LinearLayout.LayoutParams(-1, dp(26));
+        footerLp.topMargin = dp(3);
+        View statusDot = new View(this);
+        statusDot.setBackground(round(blockAds ? Color.rgb(27, 183, 126) : Color.rgb(151, 166, 184), 99));
+        menuFooter.addView(statusDot, new LinearLayout.LayoutParams(dp(7), dp(7)));
+        menuFooterStatus = text(L(blockAds ? "Koruma açık" : "Koruma kapalı",
+                blockAds ? "Protection on" : "Protection off"), 9, muted, true);
+        LinearLayout.LayoutParams statusLp = new LinearLayout.LayoutParams(0, -2, 1);
+        statusLp.leftMargin = dp(6);
+        menuFooter.addView(menuFooterStatus, statusLp);
+        menuFooterTabs = text(tabs.size() + L(" SEKME", " TABS"), 9, Color.rgb(16, 137, 170), true);
+        menuFooter.addView(menuFooterTabs);
+        panel.addView(menuFooter, footerLp);
         return panel;
     }
 
@@ -683,16 +740,16 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams toolCellParams() {
-        return new LinearLayout.LayoutParams(0, dp(84), 1);
+        return new LinearLayout.LayoutParams(0, dp(78), 1);
     }
 
     private View toolCell(String icon, String label, int index, Runnable action) {
         LinearLayout cell = new LinearLayout(this);
         cell.setOrientation(LinearLayout.VERTICAL);
         cell.setGravity(Gravity.CENTER);
-        cell.setPadding(dp(2), dp(4), dp(2), dp(3));
-        int[] tileColors = {0xFFE9F8FF, 0xFFEAFBF4, 0xFFFFF3E9, 0xFFF0EAFE,
-                0xFFEAF1FF, 0xFFFFF7E2, 0xFFE7FBFC, 0xFFF1F3F8};
+        cell.setPadding(dp(2), dp(3), dp(2), dp(3));
+        int[] tileColors = {0xFFDFF5FF, 0xFFDDF9EF, 0xFFFFEBD8, 0xFFEDE5FF,
+                0xFFE1EAFE, 0xFFFFF1C8, 0xFFDFF8FA, 0xFFE7EDF7};
         TextView glyph = text(icon, 23,
                 index == 3 && privateMode ? Color.rgb(119, 69, 180) : Color.rgb(38, 106, 145), true);
         glyph.setGravity(Gravity.CENTER);
@@ -700,15 +757,33 @@ public class MainActivity extends Activity {
                 new int[]{tileColors[Math.max(0, Math.min(index, tileColors.length - 1))], Color.WHITE});
         iconTile.setCornerRadius(dp(15));
         glyph.setBackground(iconTile);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(39), dp(39));
-        iconLp.bottomMargin = dp(5);
+        glyph.setElevation(dp(2));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(37), dp(37));
+        iconLp.bottomMargin = dp(4);
         cell.addView(glyph, iconLp);
         TextView caption = text(label, 9, ink, true);
         caption.setGravity(Gravity.CENTER);
         caption.setMaxLines(2);
         cell.addView(caption, new LinearLayout.LayoutParams(-1, -2));
-        cell.setBackground(round(0xFFF9FBFD, 17));
+        GradientDrawable cellBg = round(Color.WHITE, 17);
+        cellBg.setStroke(dp(1), 0xFFEAF0F6);
+        cell.setBackground(cellBg);
         cell.setElevation(dp(1));
+        cell.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                v.animate().cancel();
+                v.animate().scaleX(.94f).scaleY(.94f).translationY(dp(1)).setDuration(75).start();
+                glyph.animate().rotationBy(index % 2 == 0 ? -7f : 7f).scaleX(1.08f).scaleY(1.08f)
+                        .setDuration(110).start();
+            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP ||
+                    event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).translationY(0f).setDuration(170)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(.6f)).start();
+                glyph.animate().rotation(0f).scaleX(1f).scaleY(1f).setDuration(190)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(.65f)).start();
+            }
+            return false;
+        });
         cell.setOnClickListener(v -> animateAction(cell, () -> {
             closeToolsPanel();
             action.run();
@@ -724,6 +799,8 @@ public class MainActivity extends Activity {
         if (adBlockStateLabel != null) adBlockStateLabel.setText(L(
                 blockAds ? "Reklam engeli açık" : "Reklam engeli kapalı",
                 blockAds ? "Ad blocker on" : "Ad blocker off"));
+        if (menuFooterStatus != null) menuFooterStatus.setText(L(blockAds ? "Koruma açık" : "Koruma kapalı",
+                blockAds ? "Protection on" : "Protection off"));
         if (webView != null && !isHomeUrl(webView.getUrl())) webView.reload();
         Toast.makeText(this, L("Reklam engeli ", "Ad blocking ") +
                 (blockAds ? L("açıldı", "enabled") : L("kapatıldı", "disabled")), Toast.LENGTH_SHORT).show();
@@ -744,14 +821,28 @@ public class MainActivity extends Activity {
         toolsPanel.setTranslationY(dp(28));
         toolsPanel.setScaleX(0.975f);
         toolsPanel.setScaleY(0.975f);
-        toolsPanel.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(280)
-                .setInterpolator(new android.view.animation.PathInterpolator(0.18f, 0.82f, 0.25f, 1f)).start();
+        toolsPanel.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(360)
+                .setInterpolator(new android.view.animation.PathInterpolator(0.16f, 1f, 0.3f, 1f)).start();
+        if (actionLogo != null) actionLogo.animate().rotationBy(360f).setDuration(460)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        if (actionLogo != null) {
+            actionLogo.animate().cancel();
+            actionLogo.animate().rotationBy(360f).scaleX(1.14f).scaleY(1.14f).setDuration(430)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).withEndAction(() ->
+                            actionLogo.animate().scaleX(1f).scaleY(1f).setDuration(190)
+                                    .setInterpolator(new android.view.animation.OvershootInterpolator(.6f)).start()).start();
+        }
+        if (actionButtonFrame != null) actionButtonFrame.animate().translationY(-dp(2)).setDuration(180)
+                .withEndAction(() -> actionButtonFrame.animate().translationY(0f).setDuration(220).start()).start();
         for (int i = 0; i < toolsCells.size(); i++) {
             View cell = toolsCells.get(i);
             cell.setAlpha(0f);
             cell.setTranslationY(dp(7));
-            cell.animate().alpha(1f).translationY(0f).setStartDelay(Math.min(i * 18L, 190L))
-                    .setDuration(210).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            cell.setScaleX(.92f);
+            cell.setScaleY(.92f);
+            cell.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                    .setStartDelay(Math.min(i * 24L, 260L)).setDuration(280)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(.55f)).start();
         }
     }
 
@@ -759,8 +850,13 @@ public class MainActivity extends Activity {
         if (!toolsOpen || toolsPanel == null) return;
         toolsOpen = false;
         updateActionButton();
-        toolsScrim.animate().alpha(0f).setDuration(170).withEndAction(() -> toolsScrim.setVisibility(View.GONE)).start();
-        toolsPanel.animate().alpha(0f).translationY(dp(22)).scaleX(0.975f).scaleY(0.975f).setDuration(180).withEndAction(() -> {
+        toolsScrim.animate().alpha(0f).setDuration(210).withEndAction(() -> toolsScrim.setVisibility(View.GONE)).start();
+        if (actionLogo != null) actionLogo.animate().cancel();
+        if (actionLogo != null) actionLogo.animate().rotationBy(-360f).setDuration(370)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        if (actionButtonFrame != null) actionButtonFrame.animate().translationY(0f).setDuration(210).start();
+        toolsPanel.animate().alpha(0f).translationY(dp(28)).scaleX(.95f).scaleY(.95f).setDuration(245)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator()).withEndAction(() -> {
             toolsPanel.setVisibility(View.GONE);
             toolsPanel.setTranslationY(dp(28));
             toolsPanel.setScaleX(1f);
@@ -770,9 +866,12 @@ public class MainActivity extends Activity {
 
     private void updateActionButton() {
         if (actionLogo == null || actionCloseGlyph == null || actionButtonFrame == null) return;
-        actionLogo.setVisibility(toolsOpen ? View.GONE : View.VISIBLE);
-        actionCloseGlyph.setVisibility(toolsOpen ? View.VISIBLE : View.GONE);
+        actionLogo.setVisibility(View.VISIBLE);
+        actionCloseGlyph.setVisibility(View.GONE);
         actionButtonFrame.setContentDescription(toolsOpen ? L("Menüyü kapat", "Close menu") : L("Menüyü aç", "Open menu"));
+        if (menuFooterStatus != null) menuFooterStatus.setText(L(blockAds ? "Koruma açık" : "Koruma kapalı",
+                blockAds ? "Protection on" : "Protection off"));
+        if (menuFooterTabs != null) menuFooterTabs.setText(tabs.size() + L(" SEKME", " TABS"));
     }
 
     private void animateAction(View view, Runnable action) {
@@ -851,8 +950,16 @@ public class MainActivity extends Activity {
                 page.setTranslationY(dp(18));
                 page.setScaleX(.986f);
                 page.setScaleY(.986f);
-                page.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(280)
-                        .setInterpolator(new android.view.animation.PathInterpolator(.18f, .82f, .25f, 1f)).start();
+                page.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(340)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.16f, 1f, .3f, 1f)).start();
+                header.setAlpha(0f);
+                header.setTranslationY(-dp(8));
+                header.animate().alpha(1f).translationY(0f).setStartDelay(45).setDuration(270)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+                scroll.setAlpha(0f);
+                scroll.setTranslationY(dp(13));
+                scroll.animate().alpha(1f).translationY(0f).setStartDelay(80).setDuration(330)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
             }
         });
         dialog.show();
@@ -970,7 +1077,7 @@ public class MainActivity extends Activity {
                 blockAds ? L("Açık", "On") : L("Kapalı", "Off"), () -> {
                     blockAds = !blockAds;
                     prefs.edit().putBoolean("block_ads", blockAds).apply();
-                    updateModeLabel(); ref[0].dismiss(); showSettings();
+                    updateModeLabel(); updateActionButton(); ref[0].dismiss(); showSettings();
                 });
         settingRow(body, "◎", L("Do Not Track sinyali", "Do Not Track signal"),
                 L("Siteler bu isteği yok sayabilir", "Websites may ignore this signal"),
