@@ -449,8 +449,10 @@ public class MainActivity extends Activity {
         actionButtonFrame.addView(actionCloseGlyph, new FrameLayout.LayoutParams(-1, -1));
         actionButtonFrame.setContentDescription(L("Araçlar panelini aç", "Open tools panel"));
         actionButtonFrame.setOnClickListener(v -> {
-            actionButtonFrame.animate().rotationBy(90f).setDuration(210).start();
-            toggleToolsPanel();
+            actionButtonFrame.animate().scaleX(0.88f).scaleY(0.88f).setDuration(95).withEndAction(() -> {
+                toggleToolsPanel();
+                actionButtonFrame.animate().scaleX(1f).scaleY(1f).setDuration(170).start();
+            }).start();
         });
         return actionButtonFrame;
     }
