@@ -8,6 +8,10 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.ColorDrawable;
@@ -17,6 +21,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Environment;
+import android.util.Base64;
+import android.util.Base64;
 import android.util.Xml;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -28,6 +34,8 @@ import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
+import android.webkit.JavascriptInterface;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -35,6 +43,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -47,6 +57,8 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.net.HttpURLConnection;
@@ -83,6 +95,9 @@ public class MainActivity extends Activity {
     private WebView webView;
     private TextView modeLabel;
     private ArrayList<String> tabs = new ArrayList<>();
+    private ArrayList<String> tabGroupNames = new ArrayList<>();
+    private ArrayList<String> tabGroupAssignments = new ArrayList<>();
+    private String selectedTabGroupFilter = "";
     private int activeTab = 0;
     private boolean privateMode = false;
     private boolean blockAds = true;
@@ -99,6 +114,11 @@ public class MainActivity extends Activity {
     private ImageView actionLogo;
     private TextView actionCloseGlyph;
     private boolean toolsOpen = false;
+    private final ArrayList<View> toolsCells = new ArrayList<>();
+    private static final int REQUEST_SITE_ICON = 7814;
+    private int pendingSiteIconIndex = -1;
+    private TextView adBlockStateLabel;
+    private TextView tabCountBadge;
     private Dialog tabsDialog;
     private int newsRequestToken = 0;
     private final Handler downloadUiHandler = new Handler(Looper.getMainLooper());
@@ -134,6 +154,10 @@ public class MainActivity extends Activity {
         } else {
             activeTab = Math.max(0, Math.min(prefs.getInt("active_tab", tabs.size() - 1), tabs.size() - 1));
         }
+        tabGroupNames = readList("tab_group_names");
+        tabGroupAssignments = readList("tab_group_assignments");
+        while (tabGroupAssignments.size() < tabs.size()) tabGroupAssignments.add("");
+        while (tabGroupAssignments.size() > tabs.size()) tabGroupAssignments.remove(tabGroupAssignments.size() - 1);
         buildUi();
         setupWebView();
         loadTab(activeTab);
@@ -234,7 +258,7 @@ public class MainActivity extends Activity {
         webStage.addView(toolsScrim, new FrameLayout.LayoutParams(-1, -1));
 
         toolsPanel = buildToolsPanel();
-        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(-1, dp(226), Gravity.BOTTOM);
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(-1, dp(306), Gravity.BOTTOM);
         panelParams.leftMargin = dp(8);
         panelParams.rightMargin = dp(8);
         panelParams.bottomMargin = dp(6);
@@ -282,6 +306,7 @@ public class MainActivity extends Activity {
 
         webView.setBackgroundColor(Color.rgb(244, 246, 250));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.addJavascriptInterface(new BrowserBridge(), "TURNative");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onProgressChanged(WebView view, int value) {
                 progress.setProgress(value);
@@ -327,6 +352,8 @@ public class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 progress.setVisibility(View.VISIBLE);
                 view.animate().alpha(0.94f).setDuration(120).start();
+                if (isHomeUrl(url)) view.addJavascriptInterface(new BrowserBridge(), "TURNative");
+                else view.removeJavascriptInterface("TURNative");
                 if (url != null && !url.startsWith("file:")) addressBar.setText(url);
                 if (url != null && url.equals(dntPendingUrl)) dntPendingUrl = null;
                 if (doNotTrack && url != null && url.startsWith("http")) {
@@ -422,9 +449,12 @@ public class MainActivity extends Activity {
 
     private void newTab() {
         tabs.add(HOME_URL);
+        tabGroupAssignments.add("");
         activeTab = tabs.size() - 1;
+        updateTabCountBadge();
         if (!privateMode) {
             saveList("tabs", tabs);
+            saveList("tab_group_assignments", tabGroupAssignments);
             prefs.edit().putInt("active_tab", activeTab).apply();
         }
         loadHome();
@@ -455,6 +485,7 @@ public class MainActivity extends Activity {
         TextView count = text(String.valueOf(Math.min(99, tabs.size())), 8, Color.WHITE, true);
         count.setGravity(Gravity.CENTER);
         count.setBackground(round(Color.rgb(18,180,199), 20));
+        tabCountBadge = count;
         stack.addView(count, new FrameLayout.LayoutParams(dp(17), dp(17), Gravity.RIGHT | Gravity.TOP));
         item.addView(stack, new LinearLayout.LayoutParams(dp(38), dp(30)));
         TextView label = text(L("Sekmeler","Tabs"), 9, muted, false);
@@ -462,6 +493,10 @@ public class MainActivity extends Activity {
         item.addView(label);
         item.setOnClickListener(v -> animateAction(item, this::showTabsDialog));
         return item;
+    }
+
+    private void updateTabCountBadge() {
+        if (tabCountBadge != null) tabCountBadge.setText(String.valueOf(Math.min(99, tabs.size())));
     }
 
     private View homeNavItem() {
@@ -510,7 +545,7 @@ public class MainActivity extends Activity {
         actionCloseGlyph.setGravity(Gravity.CENTER);
         actionCloseGlyph.setVisibility(View.GONE);
         actionButtonFrame.addView(actionCloseGlyph, new FrameLayout.LayoutParams(-1, -1));
-        actionButtonFrame.setContentDescription(L("Araçlar panelini aç", "Open tools panel"));
+        actionButtonFrame.setContentDescription(L("Menüyü aç", "Open menu"));
         actionButtonFrame.setOnClickListener(v -> {
             actionButtonFrame.animate().scaleX(0.88f).scaleY(0.88f).setDuration(95).withEndAction(() -> {
                 toggleToolsPanel();
@@ -521,63 +556,100 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout buildToolsPanel() {
+        toolsCells.clear();
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(10), dp(11), dp(10), dp(8));
+        panel.setPadding(dp(10), dp(5), dp(10), dp(8));
         panel.setBackground(round(Color.WHITE, 27));
-        panel.setElevation(dp(15));
+        panel.setElevation(dp(18));
 
-        LinearLayout rowOne = new LinearLayout(this);
-        rowOne.setOrientation(LinearLayout.HORIZONTAL);
-        rowOne.setGravity(Gravity.CENTER);
-        rowOne.addView(toolCell("◷", L("Geçmiş", "History"), 0, () -> showSavedPages("history", L("Geçmiş", "History"), false)),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
-        rowOne.addView(toolCell("☆", L("Yer imleri", "Bookmark"), 1, () -> showSavedPages("bookmarks", L("Yer imleri", "Bookmarks"), true)),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
-        rowOne.addView(toolCell("⇩", L("İndirme", "Download"), 2, this::showDownloads),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
-        rowOne.addView(toolCell("◉", L("Gizli mod", "Incognito"), 3, this::togglePrivateMode),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
+        View grabber = new View(this);
+        grabber.setBackground(round(Color.rgb(214, 224, 235), 99));
+        LinearLayout.LayoutParams grabLp = new LinearLayout.LayoutParams(dp(38), dp(4));
+        grabLp.gravity = Gravity.CENTER_HORIZONTAL;
+        grabLp.bottomMargin = dp(5);
+        panel.addView(grabber, grabLp);
 
-        LinearLayout rowTwo = new LinearLayout(this);
-        rowTwo.setOrientation(LinearLayout.HORIZONTAL);
-        rowTwo.setGravity(Gravity.CENTER);
-        rowTwo.addView(toolCell("↗", L("Paylaş", "Share"), 4, this::shareCurrentPage),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
-        rowTwo.addView(toolCell("＋", L("Yer imi ekle", "Add to"), 5, this::saveCurrentBookmark),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
+        LinearLayout rowOne = toolRow();
+        rowOne.addView(toolCell("◷", L("Geçmiş", "History"), 0,
+                () -> showSavedPages("history", L("Geçmiş", "History"), false)), toolCellParams());
+        rowOne.addView(toolCell("☆", L("Yer imleri", "Bookmarks"), 1,
+                () -> showSavedPages("bookmarks", L("Yer imleri", "Bookmarks"), true)), toolCellParams());
+        rowOne.addView(toolCell("⇩", L("İndirmeler", "Downloads"), 2, this::showDownloads), toolCellParams());
+        rowOne.addView(toolCell("◉", L("Gizli mod", "Incognito"), 3, this::togglePrivateMode), toolCellParams());
+
+        LinearLayout rowTwo = toolRow();
+        rowTwo.addView(toolCell("↗", L("Paylaş", "Share"), 4, this::shareCurrentPage), toolCellParams());
+        rowTwo.addView(toolCell("＋", L("Yer imi ekle", "Add bookmark"), 5, this::saveCurrentBookmark), toolCellParams());
         rowTwo.addView(toolCell("↻", L("Yenile", "Refresh"), 6, () -> {
             if (webView != null) webView.reload();
-        }), new LinearLayout.LayoutParams(0, dp(91), 1));
-        rowTwo.addView(toolCell("⚙", L("Araçlar", "Tools"), 7, this::showSettings),
-                new LinearLayout.LayoutParams(0, dp(91), 1));
+        }), toolCellParams());
+        rowTwo.addView(toolCell("⚙", L("Ayarlar", "Settings"), 7, this::showSettings), toolCellParams());
+
+        LinearLayout rowThree = toolRow();
+        LinearLayout adBlockCell = (LinearLayout) toolCell("⊘",
+                L(blockAds ? "Reklam engeli açık" : "Reklam engeli kapalı",
+                  blockAds ? "Ad blocker on" : "Ad blocker off"), 8, this::toggleAdBlocking);
+        adBlockStateLabel = (TextView) adBlockCell.getChildAt(1);
+        rowThree.addView(adBlockCell, toolCellParams());
+        rowThree.addView(toolCell("⌕", L("Arama motoru", "Search engine"), 9, this::showSearchEngineDialog), toolCellParams());
+        rowThree.addView(toolCell("▤", L("Sekme grupları", "Tab groups"), 10, this::showTabsDialog), toolCellParams());
+        rowThree.addView(toolCell("◎", L("Gizlilik", "Privacy"), 11, this::showSettings), toolCellParams());
 
         panel.addView(rowOne, new LinearLayout.LayoutParams(-1, dp(91)));
         panel.addView(rowTwo, new LinearLayout.LayoutParams(-1, dp(91)));
+        panel.addView(rowThree, new LinearLayout.LayoutParams(-1, dp(91)));
         return panel;
+    }
+
+    private LinearLayout toolRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        return row;
+    }
+
+    private LinearLayout.LayoutParams toolCellParams() {
+        return new LinearLayout.LayoutParams(0, dp(91), 1);
     }
 
     private View toolCell(String icon, String label, int index, Runnable action) {
         LinearLayout cell = new LinearLayout(this);
         cell.setOrientation(LinearLayout.VERTICAL);
         cell.setGravity(Gravity.CENTER);
-        cell.setPadding(dp(2), dp(5), dp(2), dp(4));
+        cell.setPadding(dp(2), dp(4), dp(2), dp(3));
         int[] tileColors = {0xFFE9F8FF, 0xFFEAFBF4, 0xFFFFF3E9, 0xFFF0EAFE,
                 0xFFEAF1FF, 0xFFFFF7E2, 0xFFE7FBFC, 0xFFF1F3F8};
-        TextView glyph = text(icon, 23, index == 3 && privateMode ? Color.rgb(119, 69, 190) : Color.rgb(45, 93, 127), true);
+        TextView glyph = text(icon, 23,
+                index == 3 && privateMode ? Color.rgb(119, 69, 180) : Color.rgb(38, 106, 145), true);
         glyph.setGravity(Gravity.CENTER);
         glyph.setBackground(round(tileColors[Math.max(0, Math.min(index, tileColors.length - 1))], 16));
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(38), dp(38));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(39), dp(39));
         iconLp.bottomMargin = dp(5);
         cell.addView(glyph, iconLp);
-        TextView caption = text(label, 9, ink, false);
+        TextView caption = text(label, 9, ink, true);
         caption.setGravity(Gravity.CENTER);
+        caption.setMaxLines(2);
         cell.addView(caption, new LinearLayout.LayoutParams(-1, -2));
+        cell.setBackground(round(Color.WHITE, 15));
         cell.setOnClickListener(v -> animateAction(cell, () -> {
             closeToolsPanel();
             action.run();
         }));
+        toolsCells.add(cell);
         return cell;
+    }
+
+    private void toggleAdBlocking() {
+        blockAds = !blockAds;
+        prefs.edit().putBoolean("block_ads", blockAds).apply();
+        updateModeLabel();
+        if (adBlockStateLabel != null) adBlockStateLabel.setText(L(
+                blockAds ? "Reklam engeli açık" : "Reklam engeli kapalı",
+                blockAds ? "Ad blocker on" : "Ad blocker off"));
+        if (webView != null && !isHomeUrl(webView.getUrl())) webView.reload();
+        Toast.makeText(this, L("Reklam engeli ", "Ad blocking ") +
+                (blockAds ? L("açıldı", "enabled") : L("kapatıldı", "disabled")), Toast.LENGTH_SHORT).show();
     }
 
     private void toggleToolsPanel() {
@@ -593,7 +665,15 @@ public class MainActivity extends Activity {
         toolsPanel.setVisibility(View.VISIBLE);
         toolsPanel.setAlpha(0f);
         toolsPanel.setTranslationY(dp(25));
-        toolsPanel.animate().alpha(1f).translationY(0f).setDuration(260).start();
+        toolsPanel.animate().alpha(1f).translationY(0f).setDuration(330)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(0.72f)).start();
+        for (int i = 0; i < toolsCells.size(); i++) {
+            View cell = toolsCells.get(i);
+            cell.setAlpha(0f);
+            cell.setTranslationY(dp(7));
+            cell.animate().alpha(1f).translationY(0f).setStartDelay(Math.min(i * 18L, 190L))
+                    .setDuration(210).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        }
     }
 
     private void closeToolsPanel() {
@@ -611,7 +691,7 @@ public class MainActivity extends Activity {
         if (actionLogo == null || actionCloseGlyph == null || actionButtonFrame == null) return;
         actionLogo.setVisibility(toolsOpen ? View.GONE : View.VISIBLE);
         actionCloseGlyph.setVisibility(toolsOpen ? View.VISIBLE : View.GONE);
-        actionButtonFrame.setContentDescription(toolsOpen ? L("Araçlar panelini kapat", "Close tools panel") : L("Araçlar panelini aç", "Open tools panel"));
+        actionButtonFrame.setContentDescription(toolsOpen ? L("Menüyü kapat", "Close menu") : L("Araçlar panelini aç", "Open tools panel"));
     }
 
     private void animateAction(View view, Runnable action) {
@@ -722,6 +802,11 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
         rowLp.bottomMargin = dp(9);
         body.addView(row, rowLp);
+        row.setAlpha(0f);
+        row.setTranslationY(dp(8));
+        final long revealDelay = Math.min(body.getChildCount() * 22L, 242L);
+        row.postDelayed(() -> row.animate().alpha(1f).translationY(0f).setDuration(210)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(), revealDelay);
         row.setOnClickListener(v -> animateAction(row, action));
     } 
 
@@ -1018,6 +1103,10 @@ public class MainActivity extends Activity {
         visual.id=id; visual.name=name; visual.bar=bar; visual.percent=percent; visual.details=details; visual.state=state;
         downloadVisuals.add(visual);
         updateDownloadVisual(visual, getDownloadSnapshot(id));
+        card.setAlpha(0f);
+        card.setTranslationY(dp(8));
+        card.postDelayed(() -> card.animate().alpha(1f).translationY(0f).setDuration(260)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(), 35L);
         return card;
     }
 
@@ -1062,6 +1151,11 @@ public class MainActivity extends Activity {
         visual.id=id; visual.name=name; visual.bar=bar; visual.percent=percent; visual.details=details;
         downloadVisuals.add(visual);
         updateDownloadVisual(visual, getDownloadSnapshot(id));
+        row.setAlpha(0f);
+        row.setTranslationY(dp(7));
+        row.postDelayed(() -> row.animate().alpha(1f).translationY(0f).setDuration(230)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),
+                Math.min(downloadVisuals.size() * 32L, 240L));
         return row;
     }
 
@@ -1219,146 +1313,300 @@ public class MainActivity extends Activity {
             tabsDialog.dismiss();
             return;
         }
+        while (tabGroupAssignments.size() < tabs.size()) tabGroupAssignments.add("");
+        while (tabGroupAssignments.size() > tabs.size()) tabGroupAssignments.remove(tabGroupAssignments.size() - 1);
+
         LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(0, 0, 0, dp(16));
         final Dialog[] ref = new Dialog[1];
 
-        LinearLayout addNew = new LinearLayout(this);
-        addNew.setOrientation(LinearLayout.HORIZONTAL);
-        addNew.setGravity(Gravity.CENTER_VERTICAL);
-        addNew.setPadding(dp(16), dp(12), dp(16), dp(12));
-        addNew.setBackground(round(Color.WHITE, 20));
-        TextView plus = text("＋", 25, Color.rgb(10, 145, 189), true);
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        actions.setPadding(dp(13), dp(10), dp(11), dp(10));
+        actions.setBackground(round(Color.WHITE, 20));
+
+        TextView plus = text("+", 26, Color.rgb(10, 145, 189), true);
         plus.setGravity(Gravity.CENTER);
         plus.setBackground(round(0xFFE6F9FC, 15));
-        addNew.addView(plus, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        LinearLayout addLabels = new LinearLayout(this);
-        addLabels.setOrientation(LinearLayout.VERTICAL);
-        addLabels.setPadding(dp(12), 0, 0, 0);
-        addLabels.addView(text(L("Yeni sekme", "New tab"), 14, ink, true));
-        addLabels.addView(text(L("Yeni bir sayfada gezinmeye başla", "Start browsing a fresh page"), 10, muted, false));
-        addNew.addView(addLabels, new LinearLayout.LayoutParams(0, -2, 1));
-        addNew.addView(text("›", 26, muted, false));
-        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(-1, -2);
-        addLp.bottomMargin = dp(13);
-        body.addView(addNew, addLp);
-        addNew.setOnClickListener(v -> animateAction(addNew, () -> {
+        actions.addView(plus, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        LinearLayout actionCopy = new LinearLayout(this);
+        actionCopy.setOrientation(LinearLayout.VERTICAL);
+        actionCopy.setPadding(dp(10), 0, 0, 0);
+        actionCopy.addView(text(L("Yeni sekme", "New tab"), 13, ink, true));
+        actionCopy.addView(text(L("Yeni bir sayfada gezinmeye başla", "Start a fresh page"), 10, muted, false));
+        actions.addView(actionCopy, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView groupButton = text("▦  " + L("Yeni grup", "New group"), 10, Color.rgb(7, 121, 159), true);
+        groupButton.setGravity(Gravity.CENTER);
+        groupButton.setPadding(dp(10), dp(10), dp(10), dp(10));
+        groupButton.setBackground(round(0xFFE7F8FC, 13));
+        actions.addView(groupButton);
+        LinearLayout.LayoutParams actionsLp = new LinearLayout.LayoutParams(-1, -2);
+        actionsLp.bottomMargin = dp(12);
+        body.addView(actions, actionsLp);
+        actions.setOnClickListener(v -> animateAction(actions, () -> {
             if (ref[0] != null) ref[0].dismiss();
             newTab();
         }));
+        groupButton.setOnClickListener(v -> createTabGroup(-1));
 
-        sectionLabel(body, L("Açık sekmeler", "OPEN TABS"));
-        if (tabs.isEmpty()) tabs.add(HOME_URL);
+        HorizontalScrollView groupScroll = new HorizontalScrollView(this);
+        groupScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips = new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        chips.setPadding(dp(1), dp(2), dp(1), dp(9));
+        addTabGroupChip(chips, L("Tümü", "All tabs"), "", ref);
+        for (String group : tabGroupNames) addTabGroupChip(chips, group, group, ref);
+        groupScroll.addView(chips, new HorizontalScrollView.LayoutParams(-2, -2));
+        body.addView(groupScroll, new LinearLayout.LayoutParams(-1, -2));
+
+        int visibleCount = 0;
+        for (int i = 0; i < tabs.size(); i++) {
+            String g = i < tabGroupAssignments.size() ? tabGroupAssignments.get(i) : "";
+            if (selectedTabGroupFilter.isEmpty() || selectedTabGroupFilter.equals(g)) visibleCount++;
+        }
+        sectionLabel(body, L("Sekmeler", "TABS") + " · " + visibleCount);
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(2);
+        grid.setUseDefaultMargins(false);
+        grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+        int cell = 0;
         for (int i = 0; i < tabs.size(); i++) {
             final int tabIndex = i;
             String url = tabs.get(i);
+            String groupName = i < tabGroupAssignments.size() ? tabGroupAssignments.get(i) : "";
+            if (!selectedTabGroupFilter.isEmpty() && !selectedTabGroupFilter.equals(groupName)) continue;
             boolean selected = i == activeTab;
+
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(10), dp(10), dp(10), dp(11));
-            GradientDrawable cardBg = round(Color.WHITE, 23);
+            card.setPadding(dp(9), dp(9), dp(9), dp(10));
+            GradientDrawable cardBg = round(Color.WHITE, 21);
             cardBg.setStroke(dp(selected ? 2 : 1), selected ? Color.rgb(20, 183, 205) : Color.rgb(231, 235, 242));
             card.setBackground(cardBg);
             card.setElevation(dp(selected ? 3 : 1));
 
-            LinearLayout cardHeader = new LinearLayout(this);
-            cardHeader.setOrientation(LinearLayout.HORIZONTAL);
-            cardHeader.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.setOrientation(LinearLayout.HORIZONTAL);
+            titleRow.setGravity(Gravity.CENTER_VERTICAL);
             ImageView miniLogo = new ImageView(this);
             miniLogo.setImageResource(R.drawable.ic_t_brand);
-            cardHeader.addView(miniLogo, new LinearLayout.LayoutParams(dp(28), dp(28)));
-            LinearLayout labelCol = new LinearLayout(this);
-            labelCol.setOrientation(LinearLayout.VERTICAL);
-            labelCol.setPadding(dp(8), 0, 0, 0);
-            labelCol.addView(text(isHomeUrl(url) ? "TUR Browser" : shortUrl(url), 12, ink, true));
-            labelCol.addView(text(selected ? L("Şu an açık", "Currently open") : L("Sekmeye geç", "Switch to tab"), 9,
+            miniLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            titleRow.addView(miniLogo, new LinearLayout.LayoutParams(dp(25), dp(25)));
+            LinearLayout titleCol = new LinearLayout(this);
+            titleCol.setOrientation(LinearLayout.VERTICAL);
+            titleCol.setPadding(dp(6), 0, 0, 0);
+            TextView domain = text(isHomeUrl(url) ? "TUR Browser" : shortUrl(url), 10, ink, true);
+            domain.setMaxLines(1);
+            domain.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            titleCol.addView(domain);
+            titleCol.addView(text(selected ? L("Aktif", "Active") : L("Açık sekme", "Open tab"), 8,
                     selected ? Color.rgb(8, 147, 174) : muted, false));
-            cardHeader.addView(labelCol, new LinearLayout.LayoutParams(0, -2, 1));
-            TextView closeTab = text("×", 25, muted, false);
-            closeTab.setGravity(Gravity.CENTER);
-            closeTab.setBackground(round(0xFFF1F4F8, 15));
-            cardHeader.addView(closeTab, new LinearLayout.LayoutParams(dp(34), dp(34)));
-            card.addView(cardHeader);
+            titleRow.addView(titleCol, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView close = text("×", 21, muted, false);
+            close.setGravity(Gravity.CENTER);
+            close.setBackground(round(0xFFF1F4F8, 12));
+            titleRow.addView(close, new LinearLayout.LayoutParams(dp(27), dp(27)));
+            card.addView(titleRow);
 
             LinearLayout preview = new LinearLayout(this);
             preview.setOrientation(LinearLayout.VERTICAL);
-            preview.setPadding(dp(10), dp(8), dp(10), dp(8));
-            preview.setBackground(round(0xFFF3F6FA, 16));
-            LinearLayout.LayoutParams previewLp = new LinearLayout.LayoutParams(-1, dp(90));
-            previewLp.topMargin = dp(9);
-            previewLp.bottomMargin = dp(8);
-            TextView previewTop = text(isHomeUrl(url) ? L("İnternetin, senin alanın.", "Your internet, your space.") : shortUrl(url),
-                    10, Color.WHITE, true);
-            previewTop.setPadding(dp(10), dp(8), dp(10), dp(8));
-            previewTop.setBackground(round(Color.rgb(39, 165, 224), 11));
-            preview.addView(previewTop, new LinearLayout.LayoutParams(-1, dp(34)));
-            LinearLayout bars = new LinearLayout(this);
-            bars.setOrientation(LinearLayout.HORIZONTAL);
-            bars.setGravity(Gravity.CENTER_VERTICAL);
-            for (int k = 0; k < 3; k++) {
-                View bar = new View(this);
-                bar.setBackground(round(k == 0 ? 0xFF22B8C9 : 0xFFDDE5EF, 8));
-                LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(0, dp(k == 0 ? 28 : 18), k == 0 ? 1.1f : 1f);
-                barLp.setMargins(0, dp(7), dp(6), 0);
-                bars.addView(bar, barLp);
+            preview.setPadding(dp(8), dp(7), dp(8), dp(7));
+            preview.setBackground(round(selected ? 0xFFE4F8FB : 0xFFF3F6FA, 14));
+            LinearLayout.LayoutParams previewLp = new LinearLayout.LayoutParams(-1, dp(68));
+            previewLp.topMargin = dp(8);
+            previewLp.bottomMargin = dp(7);
+            TextView previewHeading = text(isHomeUrl(url) ? L("İnternetin, senin alanın", "Your internet, your space") : shortUrl(url),
+                    9, Color.WHITE, true);
+            previewHeading.setPadding(dp(7), dp(6), dp(4), dp(6));
+            previewHeading.setMaxLines(1);
+            previewHeading.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            previewHeading.setBackground(round(Color.rgb(43, 167, 221), 9));
+            preview.addView(previewHeading, new LinearLayout.LayoutParams(-1, dp(27)));
+            LinearLayout lines = new LinearLayout(this);
+            lines.setOrientation(LinearLayout.HORIZONTAL);
+            lines.setGravity(Gravity.CENTER_VERTICAL);
+            for (int p = 0; p < 2; p++) {
+                View line = new View(this);
+                line.setBackground(round(p == 0 ? 0xFF22B8C9 : 0xFFDDE5EF, 8));
+                LinearLayout.LayoutParams lineLp = new LinearLayout.LayoutParams(0, dp(p == 0 ? 13 : 9), p == 0 ? 1.2f : 1f);
+                lineLp.setMargins(0, dp(5), dp(5), 0);
+                lines.addView(line, lineLp);
             }
-            preview.addView(bars);
+            preview.addView(lines);
             card.addView(preview, previewLp);
 
-            TextView urlLine = text(isHomeUrl(url) ? L("Yeni sekme sayfası", "New tab page") : url, 10, muted, false);
+            TextView group = text("▦  " + (groupName.isEmpty() ? L("Grup seç", "Set group") : groupName), 9,
+                    groupName.isEmpty() ? muted : Color.rgb(8, 132, 161), true);
+            group.setMaxLines(1);
+            group.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            group.setPadding(dp(7), dp(6), dp(7), dp(6));
+            group.setGravity(Gravity.CENTER_VERTICAL);
+            group.setBackground(round(groupName.isEmpty() ? 0xFFF0F3F7 : 0xFFE5F8FB, 10));
+            card.addView(group);
+            TextView urlLine = text(isHomeUrl(url) ? L("Yeni sekme sayfası", "New tab page") : url, 8, muted, false);
             urlLine.setMaxLines(1);
             urlLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            card.addView(urlLine);
+            LinearLayout.LayoutParams urlLp = new LinearLayout.LayoutParams(-1, -2);
+            urlLp.topMargin = dp(6);
+            card.addView(urlLine, urlLp);
 
-            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
-            cardLp.bottomMargin = dp(12);
-            body.addView(card, cardLp);
+            int row = cell / 2;
+            int column = cell % 2;
+            GridLayout.LayoutParams cardLp = new GridLayout.LayoutParams(GridLayout.spec(row, GridLayout.FILL), GridLayout.spec(column, 1f, GridLayout.FILL));
+            cardLp.width = 0;
+            cardLp.height = -2;
+            cardLp.setMargins(dp(column == 0 ? 0 : 5), 0, dp(column == 0 ? 5 : 0), dp(10));
+            grid.addView(card, cardLp);
+            cell++;
+
             card.setAlpha(0f);
-            card.setScaleX(0.97f);
-            card.setScaleY(0.97f);
-            final long delay = Math.min(i * 45L, 240L);
-            card.postDelayed(() -> card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).start(), delay);
+            card.setScaleX(.96f);
+            card.setScaleY(.96f);
+            card.postDelayed(() -> card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(230)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),
+                    Math.min(cell * 35L, 280L));
             card.setOnClickListener(v -> animateAction(card, () -> {
                 if (ref[0] != null) ref[0].dismiss();
                 loadTab(tabIndex);
             }));
-            closeTab.setOnClickListener(v -> animateAction(closeTab, () -> {
-                closeTabAt(tabIndex);
+            close.setOnClickListener(v -> animateAction(close, () -> {
                 if (ref[0] != null) ref[0].dismiss();
+                closeTabAt(tabIndex);
                 showTabsDialog();
             }));
+            group.setOnClickListener(v -> showTabGroupPicker(tabIndex));
+        }
+        if (cell == 0) {
+            LinearLayout empty = new LinearLayout(this);
+            empty.setOrientation(LinearLayout.VERTICAL);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(dp(20), dp(25), dp(20), dp(25));
+            empty.setBackground(round(Color.WHITE, 18));
+            empty.addView(text(L("Bu grupta sekme yok", "No tabs in this group"), 13, ink, true));
+            TextView help = text(L("Sekme kartındaki grup alanına dokunarak taşıyabilirsin.", "Tap the group label on a tab card to move it here."), 10, muted, false);
+            help.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, -2); hp.topMargin = dp(5);
+            empty.addView(help, hp);
+            body.addView(empty);
+        } else {
+            body.addView(grid, new LinearLayout.LayoutParams(-1, -2));
         }
 
         settingRow(body, "×", L("Diğer sekmeleri kapat", "Close other tabs"),
                 L("Sadece şu anki sekmeyi açık tut", "Keep only the current tab"), "", () -> {
-                    String keep = tabs.get(Math.max(0, Math.min(activeTab, tabs.size() - 1)));
-                    tabs.clear();
-                    tabs.add(keep == null ? HOME_URL : keep);
+                    int keepIndex = Math.max(0, Math.min(activeTab, tabs.size() - 1));
+                    String keep = tabs.get(keepIndex);
+                    String group = keepIndex < tabGroupAssignments.size() ? tabGroupAssignments.get(keepIndex) : "";
+                    tabs.clear(); tabs.add(keep == null ? HOME_URL : keep);
+                    tabGroupAssignments.clear(); tabGroupAssignments.add(group);
                     activeTab = 0;
-                    if (!privateMode) saveList("tabs", tabs);
+                    if (!privateMode) {
+                        saveList("tabs", tabs);
+                        saveList("tab_group_assignments", tabGroupAssignments);
+                    }
                     if (ref[0] != null) ref[0].dismiss();
                     loadTab(0);
                 });
         ref[0] = showModernPage(L("Sekmeler", "Tabs") + " · " + tabs.size(),
-                L("Açık sayfalarını düzenle", "Manage your open pages"), body);
+                L("İkili görünüm ve sekme grupları", "Two-column view and tab groups"), body);
         tabsDialog = ref[0];
+    }
+
+    private void addTabGroupChip(LinearLayout parent, String label, String value, Dialog[] ref) {
+        boolean active = selectedTabGroupFilter.equals(value);
+        TextView chip = text(label, 10, active ? Color.WHITE : Color.rgb(77, 99, 124), true);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(13), dp(9), dp(13), dp(9));
+        chip.setBackground(round(active ? Color.rgb(10, 138, 176) : Color.WHITE, 99));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.rightMargin = dp(7);
+        parent.addView(chip, lp);
+        chip.setOnClickListener(v -> {
+            selectedTabGroupFilter = value;
+            if (ref[0] != null) ref[0].dismiss();
+            showTabsDialog();
+        });
+    }
+
+    private void createTabGroup(int tabIndex) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setHint(L("Örn. İş, Alışveriş, Okul", "e.g. Work, Shopping, Study"));
+        input.setTextSize(14);
+        input.setPadding(dp(12), dp(10), dp(12), dp(10));
+        input.setBackground(round(0xFFF2F6FA, 14));
+        LinearLayout wrapper = new LinearLayout(this);
+        wrapper.setPadding(dp(6), dp(4), dp(6), dp(4));
+        wrapper.addView(input);
+        new AlertDialog.Builder(this).setTitle(L("Yeni sekme grubu", "New tab group"))
+                .setMessage(L("Sekmelerini düzenlemek için bir isim ver.", "Give your group a name."))
+                .setView(wrapper)
+                .setNegativeButton(L("İptal", "Cancel"), null)
+                .setPositiveButton(L("Oluştur", "Create"), (dialog, which) -> {
+                    String name = input.getText().toString().trim();
+                    if (name.isEmpty()) name = L("Yeni grup", "New group");
+                    if (!tabGroupNames.contains(name)) {
+                        tabGroupNames.add(name);
+                        saveList("tab_group_names", tabGroupNames);
+                    }
+                    selectedTabGroupFilter = name;
+                    if (tabIndex >= 0 && tabIndex < tabGroupAssignments.size()) {
+                        tabGroupAssignments.set(tabIndex, name);
+                        saveList("tab_group_assignments", tabGroupAssignments);
+                    }
+                    if (tabsDialog != null && tabsDialog.isShowing()) tabsDialog.dismiss();
+                    showTabsDialog();
+                }).show();
+    }
+
+    private void showTabGroupPicker(int tabIndex) {
+        ArrayList<String> choices = new ArrayList<>();
+        choices.add(L("Grup yok", "No group"));
+        choices.addAll(tabGroupNames);
+        choices.add(L("+ Yeni grup oluştur", "+ Create group"));
+        String[] items = choices.toArray(new String[0]);
+        new AlertDialog.Builder(this).setTitle(L("Sekme grubunu seç", "Choose tab group"))
+                .setItems(items, (dialog, which) -> {
+                    if (which == items.length - 1) {
+                        createTabGroup(tabIndex);
+                        return;
+                    }
+                    if (tabIndex >= 0 && tabIndex < tabGroupAssignments.size()) {
+                        tabGroupAssignments.set(tabIndex, which == 0 ? "" : tabGroupNames.get(which - 1));
+                        saveList("tab_group_assignments", tabGroupAssignments);
+                        selectedTabGroupFilter = "";
+                    }
+                    if (tabsDialog != null && tabsDialog.isShowing()) tabsDialog.dismiss();
+                    showTabsDialog();
+                })
+                .setNegativeButton(L("İptal", "Cancel"), null).show();
     }
 
     private void closeTabAt(int index) {
         if (index < 0 || index >= tabs.size()) return;
         tabs.remove(index);
-        if (tabs.isEmpty()) tabs.add(HOME_URL);
+        if (index < tabGroupAssignments.size()) tabGroupAssignments.remove(index);
+        if (tabs.isEmpty()) {
+            tabs.add(HOME_URL);
+            tabGroupAssignments.clear();
+            tabGroupAssignments.add("");
+        }
         if (activeTab > index) activeTab--;
         else if (activeTab >= tabs.size()) activeTab = tabs.size() - 1;
         if (activeTab < 0) activeTab = 0;
+        updateTabCountBadge();
         if (!privateMode) {
             saveList("tabs", tabs);
+            saveList("tab_group_assignments", tabGroupAssignments);
             prefs.edit().putInt("active_tab", activeTab).apply();
         }
         loadTab(activeTab);
     }
 
-        private String shortUrl(String url) {
+    private String shortUrl(String url) {
         try {
             Uri uri = Uri.parse(url);
             String host = uri.getHost();
@@ -1377,6 +1625,8 @@ public class MainActivity extends Activity {
             webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
             tabs.clear();
             tabs.add(HOME_URL);
+            tabGroupAssignments.clear();
+            tabGroupAssignments.add("");
             activeTab = 0;
             Toast.makeText(this, L("Gizli mod açık · Geçmiş kaydedilmeyecek", "Private mode on · History will not be saved"), Toast.LENGTH_LONG).show();
         } else {
@@ -1385,9 +1635,12 @@ public class MainActivity extends Activity {
             webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
             tabs.clear();
             tabs.add(HOME_URL);
+            tabGroupAssignments.clear();
+            tabGroupAssignments.add("");
             activeTab = 0;
             if (!privateMode) {
                 saveList("tabs", tabs);
+                saveList("tab_group_assignments", tabGroupAssignments);
                 prefs.edit().putInt("active_tab", activeTab).apply();
             }
             Toast.makeText(this, L("Normal gezinme açık", "Normal browsing enabled"), Toast.LENGTH_SHORT).show();
@@ -1470,6 +1723,70 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private class BrowserBridge {
+        @JavascriptInterface
+        public void pickSiteImage(int index) {
+            runOnUiThread(() -> {
+                if (webView == null || !isHomeUrl(webView.getUrl())) return;
+                pendingSiteIconIndex = index;
+                Intent picker = new Intent(Intent.ACTION_GET_CONTENT);
+                picker.setType("image/*");
+                picker.addCategory(Intent.CATEGORY_OPENABLE);
+                try {
+                    startActivityForResult(Intent.createChooser(picker, L("Hızlı erişim fotoğrafı seç", "Choose shortcut image")), REQUEST_SITE_ICON);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, L("Fotoğraf seçici açılamadı.", "Image picker could not be opened."), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_SITE_ICON) return;
+        int index = pendingSiteIconIndex;
+        pendingSiteIconIndex = -1;
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                BitmapFactory.decodeStream(input, null, bounds);
+            }
+            int max = Math.max(bounds.outWidth, bounds.outHeight);
+            int sample = 1;
+            while (max / sample > 640) sample *= 2;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = sample;
+            Bitmap bitmap;
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                bitmap = BitmapFactory.decodeStream(input, null, options);
+            }
+            if (bitmap == null) throw new IllegalArgumentException("Unsupported image");
+            int w = bitmap.getWidth(), h = bitmap.getHeight();
+            float scale = Math.min(1f, 480f / Math.max(w, h));
+            Bitmap resized = scale < 1f
+                    ? Bitmap.createScaledBitmap(bitmap, Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale)), true)
+                    : bitmap;
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            resized.compress(Bitmap.CompressFormat.JPEG, 82, output);
+            byte[] bytes = output.toByteArray();
+            if (resized != bitmap) resized.recycle();
+            bitmap.recycle();
+            String dataUri = "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP);
+            if (webView != null && isHomeUrl(webView.getUrl())) {
+                webView.evaluateJavascript("window.onCustomSiteImageSelected && window.onCustomSiteImageSelected("
+                        + index + "," + JSONObject.quote(dataUri) + ");", null);
+            } else {
+                Toast.makeText(this, L("Önce ana sayfaya dön.", "Return to the home page first."), Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, L("Fotoğraf işlenemedi. Başka bir fotoğraf dene.", "Could not process this image. Try another photo."), Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void loadNewsFeed(WebView target) {
         final int requestId = ++newsRequestToken;
