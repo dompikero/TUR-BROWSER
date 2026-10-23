@@ -1,16 +1,14 @@
 # TUR-BROWSER
 
-A lightweight Android browser focused on a modern, animated UI.
+A lightweight Android browser focused on a polished, animated mobile UI.
 
-## Version 1.3.0
-- Refined animated home screen
-- Editable quick-access links (add/remove)
-- Site favicons loaded from each site's own favicon URL, with a fallback icon service
-- Current headlines from Google News RSS, localized for Turkish or English
-- News refresh control and animated loading cards
-- Card-based settings, tab, bookmark and download screens
-- Private mode with a darker top bar and persistent label
-- Search engine selection, text sizing, basic privacy controls
+## Version 1.4.0
+- Download page redesigned with a blue transfer card, green progress indicators, colored file-type icons, file sizes, completion dates, and file actions
+- DownloadManager IDs are saved so progress and completion reflect Android download status
+- New filled-roof home icon and a stacked-tabs icon with a live count
+- Larger central T brand mark
+- Quick-access and news favicons now try original site Apple Touch icons and favicons before higher-resolution fallback providers
+- Animated UI, editable quick access, and news feed retained
 
 VPN is intentionally excluded. Ad/tracker blocking uses a small hostname list and is not a full network-wide blocker.
 
