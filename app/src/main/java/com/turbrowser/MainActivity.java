@@ -448,9 +448,11 @@ public class MainActivity extends Activity {
     }
 
     private void newTab() {
+        selectedTabGroupFilter = "";
         tabs.add(HOME_URL);
         tabGroupAssignments.add("");
         activeTab = tabs.size() - 1;
+        updateTabCountBadge();
         updateTabCountBadge();
         if (!privateMode) {
             saveList("tabs", tabs);
@@ -1503,6 +1505,7 @@ public class MainActivity extends Activity {
                     tabs.clear(); tabs.add(keep == null ? HOME_URL : keep);
                     tabGroupAssignments.clear(); tabGroupAssignments.add(group);
                     activeTab = 0;
+                    updateTabCountBadge();
                     if (!privateMode) {
                         saveList("tabs", tabs);
                         saveList("tab_group_assignments", tabGroupAssignments);
@@ -1628,6 +1631,7 @@ public class MainActivity extends Activity {
             tabGroupAssignments.clear();
             tabGroupAssignments.add("");
             activeTab = 0;
+            updateTabCountBadge();
             Toast.makeText(this, L("Gizli mod açık · Geçmiş kaydedilmeyecek", "Private mode on · History will not be saved"), Toast.LENGTH_LONG).show();
         } else {
             cookieManager.setAcceptCookie(true);
@@ -1638,6 +1642,7 @@ public class MainActivity extends Activity {
             tabGroupAssignments.clear();
             tabGroupAssignments.add("");
             activeTab = 0;
+            updateTabCountBadge();
             if (!privateMode) {
                 saveList("tabs", tabs);
                 saveList("tab_group_assignments", tabGroupAssignments);
