@@ -2,12 +2,12 @@
 
 A lightweight Android browser with a polished, animated interface.
 
-## Version 1.6.0
-- Quick-access items can be reordered by directly holding and dragging with a finger
-- Editor now fits inside each tile: remove, rename, add a custom photo, or restore the original site icon
-- In edit mode, quick access switches to a responsive three-column layout and two-column control layout to prevent overflow
-- Reorder uses animated lift, shadow, and smooth FLIP movement for neighboring cards
-- Persistent tab groups, two-column tab grid, animated T menu, and direct ad-blocking toggle retained
+## Version 1.7.0
+- Redesigned download centre with stronger visual hierarchy, download totals, status chips, smoother cards, and custom crisp vector-style file icons for documents, images, audio, video and archives
+- More polished empty downloads state and an optional clear-list action that does not delete device files
+- Redesigned T menu header, richer icon tiles, tighter spacing, refined opening/closing animations and staggered cell entry
+- Quick-access drag preview now follows the finger in a floating ghost card while a placeholder shows the target position; neighbouring tiles animate out of the way
+- Drop animates the card into its final slot and saves order; edit controls remain compact within tiles
 
 VPN is intentionally excluded. Ad/tracker blocking remains a basic hostname list, not a network-wide blocker.
 

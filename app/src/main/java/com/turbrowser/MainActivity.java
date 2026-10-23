@@ -9,6 +9,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -258,7 +262,7 @@ public class MainActivity extends Activity {
         webStage.addView(toolsScrim, new FrameLayout.LayoutParams(-1, -1));
 
         toolsPanel = buildToolsPanel();
-        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(-1, dp(306), Gravity.BOTTOM);
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(-1, dp(350), Gravity.BOTTOM);
         panelParams.leftMargin = dp(8);
         panelParams.rightMargin = dp(8);
         panelParams.bottomMargin = dp(6);
@@ -572,6 +576,31 @@ public class MainActivity extends Activity {
         grabLp.bottomMargin = dp(5);
         panel.addView(grabber, grabLp);
 
+        LinearLayout menuHeading = new LinearLayout(this);
+        menuHeading.setOrientation(LinearLayout.HORIZONTAL);
+        menuHeading.setGravity(Gravity.CENTER_VERTICAL);
+        menuHeading.setPadding(dp(5), dp(2), dp(5), dp(8));
+        ImageView brand = new ImageView(this);
+        brand.setImageResource(R.drawable.ic_t_brand);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setBackground(round(0xFFE6FAFC, 15));
+        menuHeading.addView(brand, new LinearLayout.LayoutParams(dp(37), dp(37)));
+        LinearLayout headingLabels = new LinearLayout(this);
+        headingLabels.setOrientation(LinearLayout.VERTICAL);
+        headingLabels.setPadding(dp(10), 0, 0, 0);
+        headingLabels.addView(text("TUR", 13, ink, true));
+        TextView subtitle = text(L("Hızlı işlemler", "Quick actions"), 10, muted, false);
+        LinearLayout.LayoutParams subtitleLp = new LinearLayout.LayoutParams(-1, -2);
+        subtitleLp.topMargin = dp(2);
+        headingLabels.addView(subtitle, subtitleLp);
+        menuHeading.addView(headingLabels, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView closePill = text("×", 23, muted, false);
+        closePill.setGravity(Gravity.CENTER);
+        closePill.setBackground(round(0xFFF0F4F8, 14));
+        menuHeading.addView(closePill, new LinearLayout.LayoutParams(dp(34), dp(34)));
+        closePill.setOnClickListener(v -> closeToolsPanel());
+        panel.addView(menuHeading, new LinearLayout.LayoutParams(-1, dp(42)));
+
         LinearLayout rowOne = toolRow();
         rowOne.addView(toolCell("◷", L("Geçmiş", "History"), 0,
                 () -> showSavedPages("history", L("Geçmiş", "History"), false)), toolCellParams());
@@ -598,9 +627,9 @@ public class MainActivity extends Activity {
         rowThree.addView(toolCell("▤", L("Sekme grupları", "Tab groups"), 10, this::showTabsDialog), toolCellParams());
         rowThree.addView(toolCell("◎", L("Gizlilik", "Privacy"), 11, this::showSettings), toolCellParams());
 
-        panel.addView(rowOne, new LinearLayout.LayoutParams(-1, dp(91)));
-        panel.addView(rowTwo, new LinearLayout.LayoutParams(-1, dp(91)));
-        panel.addView(rowThree, new LinearLayout.LayoutParams(-1, dp(91)));
+        panel.addView(rowOne, new LinearLayout.LayoutParams(-1, dp(84)));
+        panel.addView(rowTwo, new LinearLayout.LayoutParams(-1, dp(84)));
+        panel.addView(rowThree, new LinearLayout.LayoutParams(-1, dp(84)));
         return panel;
     }
 
@@ -612,7 +641,7 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams toolCellParams() {
-        return new LinearLayout.LayoutParams(0, dp(91), 1);
+        return new LinearLayout.LayoutParams(0, dp(84), 1);
     }
 
     private View toolCell(String icon, String label, int index, Runnable action) {
@@ -625,7 +654,10 @@ public class MainActivity extends Activity {
         TextView glyph = text(icon, 23,
                 index == 3 && privateMode ? Color.rgb(119, 69, 180) : Color.rgb(38, 106, 145), true);
         glyph.setGravity(Gravity.CENTER);
-        glyph.setBackground(round(tileColors[Math.max(0, Math.min(index, tileColors.length - 1))], 16));
+        GradientDrawable iconTile = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{tileColors[Math.max(0, Math.min(index, tileColors.length - 1))], Color.WHITE});
+        iconTile.setCornerRadius(dp(15));
+        glyph.setBackground(iconTile);
         LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(39), dp(39));
         iconLp.bottomMargin = dp(5);
         cell.addView(glyph, iconLp);
@@ -633,7 +665,8 @@ public class MainActivity extends Activity {
         caption.setGravity(Gravity.CENTER);
         caption.setMaxLines(2);
         cell.addView(caption, new LinearLayout.LayoutParams(-1, -2));
-        cell.setBackground(round(Color.WHITE, 15));
+        cell.setBackground(round(0xFFF9FBFD, 17));
+        cell.setElevation(dp(1));
         cell.setOnClickListener(v -> animateAction(cell, () -> {
             closeToolsPanel();
             action.run();
@@ -666,9 +699,11 @@ public class MainActivity extends Activity {
         toolsScrim.animate().alpha(1f).setDuration(220).start();
         toolsPanel.setVisibility(View.VISIBLE);
         toolsPanel.setAlpha(0f);
-        toolsPanel.setTranslationY(dp(25));
-        toolsPanel.animate().alpha(1f).translationY(0f).setDuration(330)
-                .setInterpolator(new android.view.animation.OvershootInterpolator(0.72f)).start();
+        toolsPanel.setTranslationY(dp(28));
+        toolsPanel.setScaleX(0.975f);
+        toolsPanel.setScaleY(0.975f);
+        toolsPanel.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(280)
+                .setInterpolator(new android.view.animation.PathInterpolator(0.18f, 0.82f, 0.25f, 1f)).start();
         for (int i = 0; i < toolsCells.size(); i++) {
             View cell = toolsCells.get(i);
             cell.setAlpha(0f);
@@ -683,9 +718,11 @@ public class MainActivity extends Activity {
         toolsOpen = false;
         updateActionButton();
         toolsScrim.animate().alpha(0f).setDuration(170).withEndAction(() -> toolsScrim.setVisibility(View.GONE)).start();
-        toolsPanel.animate().alpha(0f).translationY(dp(22)).setDuration(190).withEndAction(() -> {
+        toolsPanel.animate().alpha(0f).translationY(dp(22)).scaleX(0.975f).scaleY(0.975f).setDuration(180).withEndAction(() -> {
             toolsPanel.setVisibility(View.GONE);
-            toolsPanel.setTranslationY(dp(26));
+            toolsPanel.setTranslationY(dp(28));
+            toolsPanel.setScaleX(1f);
+            toolsPanel.setScaleY(1f);
         }).start();
     }
 
@@ -693,7 +730,7 @@ public class MainActivity extends Activity {
         if (actionLogo == null || actionCloseGlyph == null || actionButtonFrame == null) return;
         actionLogo.setVisibility(toolsOpen ? View.GONE : View.VISIBLE);
         actionCloseGlyph.setVisibility(toolsOpen ? View.VISIBLE : View.GONE);
-        actionButtonFrame.setContentDescription(toolsOpen ? L("Menüyü kapat", "Close menu") : L("Araçlar panelini aç", "Open tools panel"));
+        actionButtonFrame.setContentDescription(toolsOpen ? L("Menüyü kapat", "Close menu") : L("Menüyü aç", "Open menu"));
     }
 
     private void animateAction(View view, Runnable action) {
@@ -1008,157 +1045,347 @@ public class MainActivity extends Activity {
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(0, 0, 0, dp(18));
+        body.addView(buildDownloadsOverview(names, ids), new LinearLayout.LayoutParams(-1, -2));
 
         if (names.isEmpty()) {
-            LinearLayout hero = new LinearLayout(this);
-            hero.setOrientation(LinearLayout.VERTICAL);
-            hero.setPadding(dp(18), dp(18), dp(18), dp(18));
-            hero.setBackground(downloadGradient());
-            hero.addView(text(L("İndirmelerin burada", "Your downloads, together"), 18, Color.WHITE, true));
-            TextView caption = text(L("Web'den indirdiğin dosyalar burada görünür.", "Files you download from the web will appear here."), 11, Color.WHITE, false);
-            caption.setAlpha(.92f);
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2); cp.topMargin = dp(7);
-            hero.addView(caption, cp);
-            TextView icon = text("↓", 34, Color.WHITE, true);
-            icon.setGravity(Gravity.CENTER); icon.setBackground(round(0x35FFFFFF, 22));
-            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(62), dp(62)); ip.topMargin = dp(17);
-            hero.addView(icon, ip);
-            body.addView(hero);
-            downloadsDialog = showModernPage(L("İndirilenler", "Download"), L("Dosyaların tek yerde", "Your files in one place"), body);
+            body.addView(buildDownloadsEmpty(), new LinearLayout.LayoutParams(-1, -2));
+            downloadsDialog = showModernPage(L("İndirmeler", "Downloads"),
+                    L("İndirme merkezine hoş geldin", "Your download centre"), body);
             return;
         }
 
-        int featured = 0;
+        int featured = -1;
         for (int i = 0; i < names.size(); i++) {
             DownloadSnapshot snap = getDownloadSnapshot(downloadIdAt(ids, i));
             if (snap.status == DownloadManager.STATUS_PENDING || snap.status == DownloadManager.STATUS_RUNNING ||
                     snap.status == DownloadManager.STATUS_PAUSED) { featured = i; break; }
         }
-        body.addView(buildDownloadHero(names.get(featured), downloadIdAt(ids, featured)));
-        sectionLabel(body, L("Tamamlanan indirmeler", "Completed"));
+        if (featured >= 0) {
+            sectionLabel(body, L("ŞU ANDA İNDİRİLİYOR", "IN PROGRESS"));
+            body.addView(buildDownloadHero(names.get(featured), downloadIdAt(ids, featured)),
+                    new LinearLayout.LayoutParams(-1, -2));
+        }
+        sectionLabel(body, featured >= 0 ? L("DİĞER DOSYALAR", "YOUR FILES") : L("İNDİRME GEÇMİŞİ", "YOUR FILES"));
         for (int i = 0; i < names.size(); i++) {
-            if (i != featured) body.addView(buildDownloadRow(names.get(i), downloadIdAt(ids, i)));
+            if (i == featured) continue;
+            LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(-1, -2);
+            itemLp.bottomMargin = dp(9);
+            body.addView(buildDownloadRow(names.get(i), downloadIdAt(ids, i)), itemLp);
         }
-        if (names.size() == 1) {
-            TextView note = text(L("Son indirilen dosya yukarıda gösteriliyor.", "Your latest download is shown above."), 11, muted, false);
-            note.setPadding(dp(12), dp(14), dp(12), dp(14));
-            note.setBackground(round(Color.WHITE, 16));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.topMargin = dp(5);
-            body.addView(note, lp);
-        }
-        downloadsDialog = showModernPage(L("İndirilenler", "Download"), L("İndirme geçmişin", "Your download history"), body);
+
+        LinearLayout clear = new LinearLayout(this);
+        clear.setGravity(Gravity.CENTER);
+        clear.setPadding(dp(12), dp(13), dp(12), dp(13));
+        clear.setBackground(round(0xFFF0F5F9, 16));
+        clear.addView(text(L("İndirme listesini temizle", "Clear download list"), 11,
+                Color.rgb(91, 111, 135), true));
+        LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(-1, -2);
+        clearLp.topMargin = dp(5);
+        body.addView(clear, clearLp);
+        clear.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle(L("İndirme listesini temizle?", "Clear the download list?"))
+                .setMessage(L("Dosyalar cihazından silinmez; yalnızca listedeki kayıtlar kaldırılır.",
+                        "Files stay on your device; only the list entries are removed."))
+                .setNegativeButton(L("İptal", "Cancel"), null)
+                .setPositiveButton(L("Temizle", "Clear"), (d, which) -> {
+                    saveList("downloads", new ArrayList<>());
+                    saveList("download_ids", new ArrayList<>());
+                    if (downloadsDialog != null) downloadsDialog.dismiss();
+                    showDownloads();
+                }).show());
+
+        downloadsDialog = showModernPage(L("İndirmeler", "Downloads"),
+                L("Dosyaların tek bir yerde", "Your files in one place"), body);
         downloadsDialog.setOnDismissListener(d -> stopDownloadPolling());
         startDownloadPolling(downloadsDialog);
     }
 
-    private GradientDrawable downloadGradient() {
-        return new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.rgb(90, 201, 239), Color.rgb(42, 165, 224), Color.rgb(18, 126, 208)});
-    }
-
-    private LinearLayout buildDownloadHero(String name, long id) {
-        LinearLayout card = new LinearLayout(this);
+    private LinearLayout buildDownloadsOverview(ArrayList<String> names, ArrayList<String> ids) {
+        int complete=0, active=0, failed=0;
+        long totalBytes=0;
+        for (int i=0; i<names.size(); i++) {
+            DownloadSnapshot snap=getDownloadSnapshot(downloadIdAt(ids,i));
+            if (snap.status==DownloadManager.STATUS_SUCCESSFUL) complete++;
+            else if (snap.status==DownloadManager.STATUS_FAILED) failed++;
+            else active++;
+            if (snap.bytes>0) totalBytes+=snap.bytes;
+        }
+        LinearLayout card=new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(16), dp(16), dp(14));
-        card.setBackground(downloadGradient());
+        card.setPadding(dp(17),dp(17),dp(17),dp(16));
+        GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(13,72,148),Color.rgb(20,143,194),Color.rgb(28,199,207)});
+        bg.setCornerRadius(dp(25));
+        card.setBackground(bg);
         card.setElevation(dp(3));
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView icon = text(fileGlyph(name), fileGlyph(name).length() > 2 ? 10 : 23, Color.WHITE, true);
-        icon.setGravity(Gravity.CENTER);
-        icon.setBackground(round(0x35FFFFFF, 24));
-        top.addView(icon, new LinearLayout.LayoutParams(dp(46), dp(46)));
-        LinearLayout labels = new LinearLayout(this);
-        labels.setOrientation(LinearLayout.VERTICAL);
-        labels.setPadding(dp(11), 0, dp(5), 0);
-        TextView title = text(name, 13, Color.WHITE, true);
-        title.setMaxLines(1);
-        title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
-        labels.addView(title);
-        TextView state = text(downloadStatus(getDownloadSnapshot(id).status), 10, Color.WHITE, false);
-        LinearLayout.LayoutParams st = new LinearLayout.LayoutParams(-1, -2); st.topMargin = dp(4);
-        labels.addView(state, st);
-        top.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView more = text("⋮", 24, Color.WHITE, true);
-        more.setGravity(Gravity.CENTER);
-        top.addView(more, new LinearLayout.LayoutParams(dp(28), dp(40)));
-        more.setOnClickListener(v -> showDownloadItemMenu(name, id));
+        LinearLayout top=new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView mark=new ImageView(this);
+        mark.setImageResource(R.drawable.ic_t_brand);
+        mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        mark.setBackground(round(0x34FFFFFF,15));
+        top.addView(mark,new LinearLayout.LayoutParams(dp(40),dp(40)));
+        LinearLayout words=new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setPadding(dp(10),0,0,0);
+        words.addView(text(L("TUR · DOSYA MERKEZİ","TUR · DOWNLOAD CENTRE"),9,0xEFFFFFFF,true));
+        TextView title=text(L("İndirmelerin","Your downloads"),19,Color.WHITE,true);
+        LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(-1,-2);
+        titleLp.topMargin=dp(3);
+        words.addView(title,titleLp);
+        top.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+        TextView count=text(String.valueOf(names.size()),14,Color.WHITE,true);
+        count.setGravity(Gravity.CENTER);
+        count.setBackground(round(0x35FFFFFF,99));
+        top.addView(count,new LinearLayout.LayoutParams(dp(38),dp(38)));
         card.addView(top);
 
-        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setMax(100);
-        bar.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(42, 227, 171)));
-        bar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x58FFFFFF));
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(5)); bp.topMargin = dp(16);
-        card.addView(bar, bp);
-        LinearLayout stats = new LinearLayout(this); stats.setGravity(Gravity.CENTER_VERTICAL);
-        TextView details = text("", 9, Color.WHITE, false); details.setAlpha(.92f);
-        stats.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView percent = text("", 10, Color.WHITE, true);
-        stats.addView(percent);
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2); sp.topMargin = dp(7);
-        card.addView(stats, sp);
+        TextView subtitle=text(names.isEmpty()
+                ?L("İndirdiğin her şey burada toplanır.","Everything you download, in one place.")
+                :L("Dosyalarını takip et ve kolayca aç.","Track progress and open files easily."),
+                11,0xEFFFFFFF,false);
+        LinearLayout.LayoutParams subLp=new LinearLayout.LayoutParams(-1,-2);
+        subLp.topMargin=dp(12);
+        card.addView(subtitle,subLp);
 
-        DownloadVisual visual = new DownloadVisual();
-        visual.id=id; visual.name=name; visual.bar=bar; visual.percent=percent; visual.details=details; visual.state=state;
-        downloadVisuals.add(visual);
-        updateDownloadVisual(visual, getDownloadSnapshot(id));
-        card.setAlpha(0f);
-        card.setTranslationY(dp(8));
-        card.postDelayed(() -> card.animate().alpha(1f).translationY(0f).setDuration(260)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(), 35L);
+        LinearLayout stats=new LinearLayout(this);
+        stats.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout[] chips={
+                downloadStatChip(L("Tamamlandı","Completed"),String.valueOf(complete)),
+                downloadStatChip(L("Aktif","Active"),String.valueOf(active)),
+                downloadStatChip(L("İndirilen","Downloaded"),formatDownloadSize(totalBytes))
+        };
+        for(int i=0;i<chips.length;i++){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);
+            lp.topMargin=dp(13);
+            if(i>0)lp.leftMargin=dp(6);
+            stats.addView(chips[i],lp);
+        }
+        card.addView(stats);
+        if(failed>0){
+            TextView failures=text(failed+" "+L("başarısız","failed"),10,Color.WHITE,true);
+            LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(-1,-2);fp.topMargin=dp(9);
+            card.addView(failures,fp);
+        }
+        LinearLayout.LayoutParams outerLp=new LinearLayout.LayoutParams(-1,-2);
+        outerLp.bottomMargin=dp(6);
+        card.setLayoutParams(outerLp);
+        card.setAlpha(0f);card.setTranslationY(dp(8));
+        card.postDelayed(()->card.animate().alpha(1f).translationY(0f).setDuration(280)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),30L);
         return card;
     }
 
-    private LinearLayout buildDownloadRow(String name, long id) {
-        LinearLayout row = new LinearLayout(this);
+    private LinearLayout downloadStatChip(String label,String value) {
+        LinearLayout chip=new LinearLayout(this);
+        chip.setOrientation(LinearLayout.VERTICAL);
+        chip.setPadding(dp(8),dp(9),dp(6),dp(9));
+        chip.setBackground(round(0x28FFFFFF,14));
+        TextView number=text(value,13,Color.WHITE,true);
+        number.setMaxLines(1);
+        number.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        chip.addView(number);
+        TextView caption=text(label,8,0xEFFFFFFF,false);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+        lp.topMargin=dp(3);
+        chip.addView(caption,lp);
+        return chip;
+    }
+
+    private LinearLayout buildDownloadsEmpty() {
+        LinearLayout empty=new LinearLayout(this);
+        empty.setOrientation(LinearLayout.VERTICAL);
+        empty.setGravity(Gravity.CENTER);
+        empty.setPadding(dp(22),dp(25),dp(22),dp(25));
+        GradientDrawable bg=round(Color.WHITE,24);
+        bg.setStroke(dp(1),0xFFE5EDF5);
+        empty.setBackground(bg);
+        FrameLayout iconPlate=new FrameLayout(this);
+        iconPlate.setBackground(round(0xFFE6F8FC,23));
+        TextView arrow=text("↓",35,Color.rgb(10,137,174),true);
+        arrow.setGravity(Gravity.CENTER);
+        iconPlate.addView(arrow,new FrameLayout.LayoutParams(-1,-1));
+        empty.addView(iconPlate,new LinearLayout.LayoutParams(dp(78),dp(78)));
+        TextView title=text(L("Henüz dosya indirmedin","No downloads yet"),15,ink,true);
+        title.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(-1,-2);titleLp.topMargin=dp(14);
+        empty.addView(title,titleLp);
+        TextView copy=text(L("Web'den indirdiğin dosyalar burada görünür. Hazır olduğunda buradan açabilir ve durumunu takip edebilirsin.",
+                "Files you download from the web will appear here. You can open them and track their status."),
+                11,muted,false);
+        copy.setGravity(Gravity.CENTER);copy.setLineSpacing(dp(2),1f);
+        LinearLayout.LayoutParams copyLp=new LinearLayout.LayoutParams(-1,-2);copyLp.topMargin=dp(7);
+        empty.addView(copy,copyLp);
+        empty.setAlpha(0f);empty.setTranslationY(dp(8));
+        empty.postDelayed(()->empty.animate().alpha(1f).translationY(0f).setDuration(300)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),65L);
+        return empty;
+    }
+
+    private GradientDrawable downloadGradient() {
+        return new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(80,194,238),Color.rgb(35,158,221),Color.rgb(16,117,202)});
+    }
+
+    private View buildDownloadTypeIcon(String name, boolean darkBackground) {
+        return new DownloadTypeIcon(this,fileExtension(name),fileColor(name),darkBackground);
+    }
+
+    private LinearLayout buildDownloadHero(String name,long id) {
+        DownloadSnapshot snap=getDownloadSnapshot(id);
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(15),dp(15),dp(15),dp(13));
+        card.setBackground(downloadGradient());
+        card.setElevation(dp(3));
+        LinearLayout.LayoutParams cardLp=new LinearLayout.LayoutParams(-1,-2);
+        cardLp.bottomMargin=dp(9);
+        card.setLayoutParams(cardLp);
+
+        LinearLayout top=new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(buildDownloadTypeIcon(name,true),new LinearLayout.LayoutParams(dp(50),dp(50)));
+        LinearLayout labels=new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setPadding(dp(11),0,dp(5),0);
+        TextView title=text(name,13,Color.WHITE,true);
+        title.setMaxLines(1);title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+        labels.addView(title);
+        TextView state=text(downloadStatus(snap.status),10,Color.WHITE,false);
+        state.setAlpha(.94f);
+        LinearLayout.LayoutParams st=new LinearLayout.LayoutParams(-1,-2);st.topMargin=dp(4);
+        labels.addView(state,st);
+        top.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+        TextView more=text("⋮",23,Color.WHITE,true);more.setGravity(Gravity.CENTER);
+        top.addView(more,new LinearLayout.LayoutParams(dp(27),dp(40)));
+        more.setOnClickListener(v->showDownloadItemMenu(name,id));
+        card.addView(top);
+
+        ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        bar.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(44,229,170)));
+        bar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x53FFFFFF));
+        LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(5));bp.topMargin=dp(15);
+        card.addView(bar,bp);
+        LinearLayout stats=new LinearLayout(this);stats.setGravity(Gravity.CENTER_VERTICAL);
+        TextView details=text("",9,Color.WHITE,false);details.setAlpha(.92f);
+        stats.addView(details,new LinearLayout.LayoutParams(0,-2,1));
+        TextView percent=text("",10,Color.WHITE,true);stats.addView(percent);
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);sp.topMargin=dp(7);
+        card.addView(stats,sp);
+
+        DownloadVisual visual=new DownloadVisual();
+        visual.id=id;visual.name=name;visual.bar=bar;visual.percent=percent;visual.details=details;visual.state=state;
+        downloadVisuals.add(visual);updateDownloadVisual(visual,snap);
+        card.setAlpha(0f);card.setTranslationY(dp(9));card.setScaleX(.985f);card.setScaleY(.985f);
+        card.postDelayed(()->card.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(270)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),55L);
+        return card;
+    }
+
+    private LinearLayout buildDownloadRow(String name,long id) {
+        DownloadSnapshot snap=getDownloadSnapshot(id);
+        LinearLayout row=new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(9), dp(10), dp(7), dp(10));
-        row.setBackground(round(Color.WHITE, 18));
-        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2); rowLp.bottomMargin = dp(8);
+        row.setPadding(dp(11),dp(11),dp(9),dp(11));
+        GradientDrawable rowBg=round(Color.WHITE,21);
+        rowBg.setStroke(dp(1),0xFFEAF0F6);
+        row.setBackground(rowBg);
+        row.setElevation(dp(1));
 
-        TextView icon = text(fileGlyph(name), fileGlyph(name).length() > 2 ? 10 : 20, Color.WHITE, true);
-        icon.setGravity(Gravity.CENTER);
-        icon.setBackground(round(fileColor(name), 24));
-        row.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(10), 0, dp(5), 0);
-        TextView title = text(name, 12, ink, true);
-        title.setMaxLines(1);
-        title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+        row.addView(buildDownloadTypeIcon(name,false),new LinearLayout.LayoutParams(dp(48),dp(48)));
+        LinearLayout content=new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(11),0,dp(6),0);
+        TextView title=text(name,12,ink,true);
+        title.setMaxLines(1);title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
         content.addView(title);
-        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal); bar.setMax(100);
-        bar.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(31, 181, 140)));
-        bar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(232, 239, 243)));
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(3)); bp.topMargin = dp(7);
-        content.addView(bar, bp);
-        TextView details = text("", 9, muted, false);
-        LinearLayout.LayoutParams detLp = new LinearLayout.LayoutParams(-1, -2); detLp.topMargin = dp(5);
-        content.addView(details, detLp);
-        row.addView(content, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout meta=new LinearLayout(this);
+        meta.setOrientation(LinearLayout.HORIZONTAL);
+        meta.setGravity(Gravity.CENTER_VERTICAL);
+        TextView status=text(downloadStatus(snap.status),9,
+                snap.status==DownloadManager.STATUS_FAILED?Color.rgb(207,73,89):Color.rgb(20,148,111),true);
+        meta.addView(status);
+        TextView separator=text("  ·  ",9,0xFF9BA9BB,false);meta.addView(separator);
+        TextView date=text(downloadDate(snap.date),9,muted,false);meta.addView(date);
+        LinearLayout.LayoutParams metaLp=new LinearLayout.LayoutParams(-1,-2);metaLp.topMargin=dp(3);
+        content.addView(meta,metaLp);
 
-        LinearLayout tail = new LinearLayout(this);
-        tail.setOrientation(LinearLayout.VERTICAL); tail.setGravity(Gravity.CENTER);
-        TextView more = text("⋮", 20, muted, true); more.setGravity(Gravity.CENTER);
-        tail.addView(more, new LinearLayout.LayoutParams(dp(26), dp(29)));
-        TextView percent = text("", 9, muted, false); tail.addView(percent);
-        row.addView(tail, new LinearLayout.LayoutParams(dp(27), -2));
-        row.setOnClickListener(v -> openDownloadedFile(id));
-        more.setOnClickListener(v -> showDownloadItemMenu(name, id));
+        ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        bar.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(32,181,139)));
+        bar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE6EDF2));
+        LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(3));bp.topMargin=dp(7);
+        content.addView(bar,bp);
 
-        DownloadVisual visual = new DownloadVisual();
-        visual.id=id; visual.name=name; visual.bar=bar; visual.percent=percent; visual.details=details;
-        downloadVisuals.add(visual);
-        updateDownloadVisual(visual, getDownloadSnapshot(id));
-        row.setAlpha(0f);
-        row.setTranslationY(dp(7));
-        row.postDelayed(() -> row.animate().alpha(1f).translationY(0f).setDuration(230)
+        TextView details=text("",9,muted,false);
+        LinearLayout.LayoutParams detLp=new LinearLayout.LayoutParams(-1,-2);detLp.topMargin=dp(5);
+        content.addView(details,detLp);
+        row.addView(content,new LinearLayout.LayoutParams(0,-2,1));
+
+        LinearLayout trailing=new LinearLayout(this);trailing.setOrientation(LinearLayout.VERTICAL);trailing.setGravity(Gravity.CENTER);
+        TextView more=text("⋯",21,muted,true);more.setGravity(Gravity.CENTER);
+        more.setBackground(round(0xFFF1F5F9,12));
+        trailing.addView(more,new LinearLayout.LayoutParams(dp(28),dp(30)));
+        TextView percent=text("",9,muted,true);
+        LinearLayout.LayoutParams pctLp=new LinearLayout.LayoutParams(-2,-2);pctLp.topMargin=dp(4);
+        trailing.addView(percent,pctLp);
+        row.addView(trailing,new LinearLayout.LayoutParams(dp(30),-2));
+        row.setOnClickListener(v->animateAction(row,()->openDownloadedFile(id)));
+        more.setOnClickListener(v->showDownloadItemMenu(name,id));
+
+        DownloadVisual visual=new DownloadVisual();
+        visual.id=id;visual.name=name;visual.bar=bar;visual.percent=percent;visual.details=details;
+        downloadVisuals.add(visual);updateDownloadVisual(visual,snap);
+        row.setAlpha(0f);row.setTranslationY(dp(7));
+        row.postDelayed(()->row.animate().alpha(1f).translationY(0f).setDuration(235)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),
-                Math.min(downloadVisuals.size() * 32L, 240L));
+                Math.min(downloadVisuals.size()*38L,280L));
         return row;
+    }
+
+    private class DownloadTypeIcon extends View {
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final String ext;
+        private final int accent;
+        private final boolean dark;
+        DownloadTypeIcon(Context context,String ext,int accent,boolean dark){super(context);this.ext=ext;this.accent=accent;this.dark=dark;}
+        private int pale(int color){return Color.rgb((Color.red(color)+255)/2,(Color.green(color)+255)/2,(Color.blue(color)+255)/2);}
+        private void setFill(int color){p.setStyle(Paint.Style.FILL);p.setColor(color);p.setStrokeWidth(1);}
+        @Override protected void onDraw(Canvas canvas){
+            super.onDraw(canvas);
+            float s=Math.min(getWidth(),getHeight());
+            float pad=s*.035f;
+            setFill(dark?0x3DFFFFFF:pale(accent));
+            canvas.drawRoundRect(pad,pad,s-pad,s-pad,s*.29f,s*.29f,p);
+            float w=s*.43f,h=s*.55f,x=(s-w)*.5f,y=s*.18f;
+            RectF paper=new RectF(x,y,x+w,y+h);
+            setFill(Color.WHITE);canvas.drawRoundRect(paper,s*.06f,s*.06f,p);
+            Path fold=new Path();fold.moveTo(x+w*.67f,y);fold.lineTo(x+w,y+h*.24f);fold.lineTo(x+w*.67f,y+h*.24f);fold.close();
+            setFill(pale(accent));canvas.drawPath(fold,p);
+            if(ext.matches("mp3|wav|m4a|ogg")){
+                setFill(accent);p.setStrokeWidth(s*.055f);p.setStrokeCap(Paint.Cap.ROUND);
+                canvas.drawLine(s*.48f,y+h*.36f,s*.48f,y+h*.65f,p);
+                canvas.drawLine(s*.48f,y+h*.36f,s*.68f,y+h*.30f,p);
+                canvas.drawLine(s*.68f,y+h*.30f,s*.68f,y+h*.56f,p);
+                p.setStyle(Paint.Style.FILL);canvas.drawCircle(s*.42f,y+h*.67f,s*.06f,p);canvas.drawCircle(s*.62f,y+h*.58f,s*.06f,p);
+            }else if(ext.matches("png|jpg|jpeg|webp|gif")){
+                setFill(accent);canvas.drawCircle(x+w*.73f,y+h*.4f,s*.045f,p);
+                Path hill=new Path();hill.moveTo(x+w*.12f,y+h*.82f);hill.lineTo(x+w*.38f,y+h*.52f);hill.lineTo(x+w*.54f,y+h*.66f);hill.lineTo(x+w*.72f,y+h*.49f);hill.lineTo(x+w*.89f,y+h*.82f);hill.close();canvas.drawPath(hill,p);
+            }else if(ext.matches("mp4|mov|mkv|avi")){
+                setFill(accent);Path play=new Path();play.moveTo(s*.43f,y+h*.34f);play.lineTo(s*.65f,y+h*.5f);play.lineTo(s*.43f,y+h*.66f);play.close();canvas.drawPath(play,p);
+            }else if(ext.matches("apk|zip|rar|7z")){
+                setFill(accent);p.setStrokeWidth(s*.05f);p.setStrokeCap(Paint.Cap.ROUND);
+                canvas.drawLine(s*.54f,y+h*.33f,s*.54f,y+h*.62f,p);canvas.drawLine(s*.45f,y+h*.53f,s*.54f,y+h*.63f,p);canvas.drawLine(s*.63f,y+h*.53f,s*.54f,y+h*.63f,p);
+            }else{
+                setFill(accent);
+                canvas.drawRoundRect(x+w*.2f,y+h*.42f,x+w*.8f,y+h*.48f,s*.025f,s*.025f,p);
+                canvas.drawRoundRect(x+w*.2f,y+h*.59f,x+w*.68f,y+h*.65f,s*.025f,s*.025f,p);
+            }
+        }
     }
 
     private long downloadIdAt(ArrayList<String> ids, int index) {
