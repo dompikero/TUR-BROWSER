@@ -1455,7 +1455,7 @@ public class MainActivity extends Activity {
 
             int row = cell / 2;
             int column = cell % 2;
-            GridLayout.LayoutParams cardLp = new GridLayout.LayoutParams(GridLayout.spec(row, GridLayout.FILL), GridLayout.spec(column, 1f, GridLayout.FILL));
+            GridLayout.LayoutParams cardLp = new GridLayout.LayoutParams(GridLayout.spec(row, GridLayout.FILL), GridLayout.spec(column, GridLayout.FILL, 1f));
             cardLp.width = 0;
             cardLp.height = -2;
             cardLp.setMargins(dp(column == 0 ? 0 : 5), 0, dp(column == 0 ? 5 : 0), dp(10));
