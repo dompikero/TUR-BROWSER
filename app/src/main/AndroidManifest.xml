@@ -6,8 +6,8 @@
     <application
         android:allowBackup="false"
         android:label="TUR Browser"
-        android:icon="@drawable/ic_t_logo"
-        android:roundIcon="@drawable/ic_t_logo"
+        android:icon="@drawable/ic_t_brand"
+        android:roundIcon="@drawable/ic_t_brand"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <activity

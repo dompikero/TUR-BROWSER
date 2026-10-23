@@ -153,7 +153,7 @@ public class MainActivity extends Activity {
         headerLayout = header;
 
         ImageView logo = new ImageView(this);
-        logo.setImageResource(com.turbrowser.R.drawable.ic_t_logo);
+        logo.setImageResource(com.turbrowser.R.drawable.ic_t_brand);
         header.addView(logo, new LinearLayout.LayoutParams(dp(39), dp(39)));
 
         LinearLayout brandColumn = new LinearLayout(this);
@@ -502,7 +502,7 @@ public class MainActivity extends Activity {
         actionButtonFrame.setBackground(gradient);
         actionButtonFrame.setElevation(dp(5));
         actionLogo = new ImageView(this);
-        actionLogo.setImageResource(R.drawable.ic_t_logo);
+        actionLogo.setImageResource(R.drawable.ic_t_brand);
         actionLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(dp(45), dp(45), Gravity.CENTER);
         actionButtonFrame.addView(actionLogo, logoLp);
@@ -1265,7 +1265,7 @@ public class MainActivity extends Activity {
             cardHeader.setOrientation(LinearLayout.HORIZONTAL);
             cardHeader.setGravity(Gravity.CENTER_VERTICAL);
             ImageView miniLogo = new ImageView(this);
-            miniLogo.setImageResource(R.drawable.ic_t_logo);
+            miniLogo.setImageResource(R.drawable.ic_t_brand);
             cardHeader.addView(miniLogo, new LinearLayout.LayoutParams(dp(28), dp(28)));
             LinearLayout labelCol = new LinearLayout(this);
             labelCol.setOrientation(LinearLayout.VERTICAL);
