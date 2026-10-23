@@ -1,19 +1,18 @@
 # TUR-BROWSER
 
-A lightweight Android browser with the turquoise/blue T logo, a modern tool sheet, an animated tab switcher, and clear private-mode styling.
+A lightweight Android browser focused on a modern, animated UI.
 
-## Features
-- WebView browsing, address/search bar, back/forward/reload and tabs
-- Card-based animated tab switcher with close controls and new-tab action
-- Search engine selection: Google, Bing, DuckDuckGo and Startpage
-- Bookmarks, browsing history, downloads and page sharing
-- Tool panel inspired by the supplied browser UI with History, Bookmarks, Downloads, Incognito, Share, Add Bookmark, Refresh and Tools
-- Private mode with a darker top area and a persistent PRIVATE MODE label
-- Basic ad/tracker host blocking, Do Not Track / Global Privacy Control signals
-- Text-size control and Turkish/English setting
-- Android Safe Browsing where supported
+## Version 1.3.0
+- Refined animated home screen
+- Editable quick-access links (add/remove)
+- Site favicons loaded from each site's own favicon URL, with a fallback icon service
+- Current headlines from Google News RSS, localized for Turkish or English
+- News refresh control and animated loading cards
+- Card-based settings, tab, bookmark and download screens
+- Private mode with a darker top bar and persistent label
+- Search engine selection, text sizing, basic privacy controls
 
-VPN is intentionally excluded. Ad/tracker blocking uses a small hostname list and is not a full network-wide blocker. Do Not Track is a preference signal; websites can ignore it.
+VPN is intentionally excluded. Ad/tracker blocking uses a small hostname list and is not a full network-wide blocker.
 
 ## Build
-GitHub Actions builds a debug APK on pushes to `main`. Find it in the workflow artifact named `TUR-BROWSER-APK`.
+GitHub Actions builds a debug APK on pushes to `main`. Download the artifact named `TUR-BROWSER-APK` from the latest successful workflow run.

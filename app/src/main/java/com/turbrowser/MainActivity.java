@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Xml;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -39,9 +40,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
+import org.xmlpull.v1.XmlPullParser;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.net.URLEncoder;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,6 +95,7 @@ public class MainActivity extends Activity {
     private TextView actionCloseGlyph;
     private boolean toolsOpen = false;
     private Dialog tabsDialog;
+    private int newsRequestToken = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -272,6 +279,7 @@ public class MainActivity extends Activity {
                     if ("home".equals(action)) loadHome();
                     else if ("bookmarks".equals(action)) showSavedPages("bookmarks", L("Yer imleri", "Bookmarks"), true);
                     else if ("history".equals(action)) showSavedPages("history", L("Geçmiş", "History"), false);
+                    else if ("news-refresh".equals(action)) loadNewsFeed(view);
                     return true;
                 }
                 String target = uri.toString();
@@ -314,6 +322,7 @@ public class MainActivity extends Activity {
                 view.animate().alpha(1f).setDuration(220).start();
                 if (isHomeUrl(url)) {
                     addressBar.setText("");
+                    loadNewsFeed(view);
                 } else if (url != null) {
                     addressBar.setText(url);
                     if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -1127,6 +1136,78 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "İndirme başlatılamadı", Toast.LENGTH_SHORT).show();
         }
+    }
+
+
+    private void loadNewsFeed(WebView target) {
+        final int requestId = ++newsRequestToken;
+        final boolean english = "English".equals(prefs.getString("language", "Türkçe"));
+        Thread worker = new Thread(() -> {
+            JSONArray news = new JSONArray();
+            HttpURLConnection connection = null;
+            InputStream stream = null;
+            try {
+                String feed = english
+                        ? "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+                        : "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr";
+                connection = (HttpURLConnection) new URL(feed).openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(9000);
+                connection.setReadTimeout(9000);
+                connection.setInstanceFollowRedirects(true);
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36 TURBrowser/1.3");
+                connection.setRequestProperty("Accept", "application/rss+xml, application/xml;q=0.9, */*;q=0.8");
+                stream = connection.getInputStream();
+                XmlPullParser parser = Xml.newPullParser();
+                parser.setInput(stream, "UTF-8");
+                JSONObject item = null;
+                int event = parser.getEventType();
+                while (event != XmlPullParser.END_DOCUMENT && news.length() < 12) {
+                    if (event == XmlPullParser.START_TAG) {
+                        String tag = parser.getName();
+                        if ("item".equals(tag)) {
+                            item = new JSONObject();
+                        } else if (item != null && "source".equals(tag)) {
+                            String sourceUrl = parser.getAttributeValue(null, "url");
+                            if (sourceUrl != null) item.put("sourceUrl", sourceUrl);
+                        }
+                        if (item != null && ("title".equals(tag) || "link".equals(tag)
+                                || "pubDate".equals(tag) || "source".equals(tag))) {
+                            String value = parser.nextText();
+                            if (value != null) value = value.trim();
+                            if (value != null && !value.isEmpty()) {
+                                if ("pubDate".equals(tag)) item.put("date", value);
+                                else item.put(tag, value);
+                            }
+                        }
+                    } else if (event == XmlPullParser.END_TAG && "item".equals(parser.getName()) && item != null) {
+                        String title = item.optString("title", "");
+                        String link = item.optString("link", "");
+                        if (!title.isEmpty() && !link.isEmpty()) {
+                            if (item.optString("source", "").isEmpty()) item.put("source", "Google News");
+                            if (item.optString("sourceUrl", "").isEmpty()) item.put("sourceUrl", link);
+                            news.put(item);
+                        }
+                        item = null;
+                    }
+                    event = parser.next();
+                }
+            } catch (Exception ignored) {
+                // The home screen will show a friendly state when the feed cannot be reached.
+            } finally {
+                try { if (stream != null) stream.close(); } catch (Exception ignored) { }
+                if (connection != null) connection.disconnect();
+            }
+            final String json = news.toString();
+            runOnUiThread(() -> {
+                if (requestId == newsRequestToken && target != null && target == webView
+                        && isHomeUrl(target.getUrl())) {
+                    target.evaluateJavascript("window.renderTurNews && window.renderTurNews(" + json + ");", null);
+                }
+            });
+        }, "TUR-News-Feed");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void addHistory(String url) {
