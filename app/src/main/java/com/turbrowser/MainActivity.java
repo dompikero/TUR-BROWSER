@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -42,10 +43,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final String HOME_URL = "file:///android_asset/home.html";
+    private static final String HOME_EN_URL = "file:///android_asset/home_en.html";
     private static final String PREFS = "tur_browser";
     private final int ink = Color.rgb(24, 34, 52);
     private final int muted = Color.rgb(119, 129, 149);
@@ -67,6 +71,8 @@ public class MainActivity extends Activity {
     private int activeTab = 0;
     private boolean privateMode = false;
     private boolean blockAds = true;
+    private boolean doNotTrack = true;
+    private String dntPendingUrl = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,6 +86,7 @@ public class MainActivity extends Activity {
 
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         blockAds = prefs.getBoolean("block_ads", true);
+        doNotTrack = prefs.getBoolean("do_not_track", true);
         tabs = readList("tabs");
         if (tabs.isEmpty()) {
             tabs.add(HOME_URL);
@@ -112,7 +119,7 @@ public class MainActivity extends Activity {
         brandColumn.setOrientation(LinearLayout.VERTICAL);
         brandColumn.setPadding(dp(10), 0, 0, 0);
         TextView brand = text("TUR Browser", 16, ink, true);
-        TextView subtitle = text("Keşfetmeye başla", 10, muted, false);
+        TextView subtitle = text(L("Keşfetmeye başla", "Start exploring"), 10, muted, false);
         brandColumn.addView(brand);
         brandColumn.addView(subtitle);
         header.addView(brandColumn, new LinearLayout.LayoutParams(0, -2, 1));
@@ -141,7 +148,7 @@ public class MainActivity extends Activity {
         addressBar.setTextSize(14);
         addressBar.setTextColor(ink);
         addressBar.setHintTextColor(Color.rgb(150, 159, 175));
-        addressBar.setHint("Web adresi veya ara");
+        addressBar.setHint(L("Web adresi veya ara", "Search or enter address"));
         addressBar.setPadding(dp(5), 0, dp(4), 0);
         addressBar.setBackgroundColor(Color.TRANSPARENT);
         addressBar.setSelectAllOnFocus(false);
@@ -183,16 +190,16 @@ public class MainActivity extends Activity {
         bottom.setBackgroundColor(Color.WHITE);
         bottom.setElevation(dp(8));
 
-        bottom.addView(navItem("‹", "Geri", () -> {
+        bottom.addView(navItem("‹", L("Geri", "Back"), () -> {
             if (webView.canGoBack()) webView.goBack();
             else Toast.makeText(this, "Önceki sayfa yok", Toast.LENGTH_SHORT).show();
         }), new LinearLayout.LayoutParams(0, dp(53), 1));
-        bottom.addView(navItem("›", "İleri", () -> {
+        bottom.addView(navItem("›", L("İleri", "Forward"), () -> {
             if (webView.canGoForward()) webView.goForward();
         }), new LinearLayout.LayoutParams(0, dp(53), 1));
         bottom.addView(homeButton(), new LinearLayout.LayoutParams(0, dp(53), 1.15f));
-        bottom.addView(navItem("▣", "Sekmeler", this::showTabsDialog), new LinearLayout.LayoutParams(0, dp(53), 1));
-        bottom.addView(navItem("⋯", "Menü", this::showMoreMenu), new LinearLayout.LayoutParams(0, dp(53), 1));
+        bottom.addView(navItem("▣", L("Sekmeler", "Tabs"), this::showTabsDialog), new LinearLayout.LayoutParams(0, dp(53), 1));
+        bottom.addView(navItem("⋯", L("Menü", "Menu"), this::showMoreMenu), new LinearLayout.LayoutParams(0, dp(53), 1));
         root.addView(bottom, new LinearLayout.LayoutParams(-1, dp(64)));
         setContentView(root);
         updateModeLabel();
@@ -210,6 +217,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) settings.setSafeBrowsingEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setCacheMode(privateMode ? WebSettings.LOAD_NO_CACHE : WebSettings.LOAD_DEFAULT);
+        settings.setTextZoom(prefs.getInt("text_zoom", 100));
 
         webView.setBackgroundColor(Color.rgb(244, 246, 250));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -225,8 +233,22 @@ public class MainActivity extends Activity {
                 if ("tur".equalsIgnoreCase(uri.getScheme())) {
                     String action = uri.getHost();
                     if ("home".equals(action)) loadHome();
-                    else if ("bookmarks".equals(action)) showSavedPages("bookmarks", "Yer imleri", true);
-                    else if ("history".equals(action)) showSavedPages("history", "Geçmiş", false);
+                    else if ("bookmarks".equals(action)) showSavedPages("bookmarks", L("Yer imleri", "Bookmarks"), true);
+                    else if ("history".equals(action)) showSavedPages("history", L("Geçmiş", "History"), false);
+                    return true;
+                }
+                String target = uri.toString();
+                if (doNotTrack && request.isForMainFrame() &&
+                        (target.startsWith("http://") || target.startsWith("https://"))) {
+                    if (target.equals(dntPendingUrl)) {
+                        dntPendingUrl = null;
+                        return false;
+                    }
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("DNT", "1");
+                    headers.put("Sec-GPC", "1");
+                    dntPendingUrl = target;
+                    view.loadUrl(target, headers);
                     return true;
                 }
                 return false;
@@ -243,11 +265,15 @@ public class MainActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 progress.setVisibility(View.VISIBLE);
                 if (url != null && !url.startsWith("file:")) addressBar.setText(url);
+                if (url != null && url.equals(dntPendingUrl)) dntPendingUrl = null;
+                if (doNotTrack && url != null && url.startsWith("http")) {
+                    view.evaluateJavascript("(function(){try{Object.defineProperty(navigator,'doNotTrack',{get:function(){return '1'}});Object.defineProperty(navigator,'globalPrivacyControl',{get:function(){return true}});}catch(e){}})();", null);
+                }
             }
 
             @Override public void onPageFinished(WebView view, String url) {
                 progress.setVisibility(View.GONE);
-                if (HOME_URL.equals(url) || (url != null && url.startsWith("file:///android_asset/home.html"))) {
+                if (isHomeUrl(url)) {
                     addressBar.setText("");
                 } else if (url != null) {
                     addressBar.setText(url);
@@ -256,9 +282,11 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (activeTab >= 0 && activeTab < tabs.size()) {
-                    tabs.set(activeTab, HOME_URL.equals(url) ? HOME_URL : url);
-                    saveList("tabs", tabs);
-                    prefs.edit().putInt("active_tab", activeTab).apply();
+                    tabs.set(activeTab, isHomeUrl(url) ? HOME_URL : url);
+                    if (!privateMode) {
+                        saveList("tabs", tabs);
+                        prefs.edit().putInt("active_tab", activeTab).apply();
+                    }
                 }
             }
         });
@@ -305,39 +333,48 @@ public class MainActivity extends Activity {
         if (tabs.isEmpty()) tabs.add(HOME_URL);
         if (activeTab < 0 || activeTab >= tabs.size()) activeTab = tabs.size() - 1;
         tabs.set(activeTab, url);
-        saveList("tabs", tabs);
+        if (!privateMode) saveList("tabs", tabs);
         addressBar.setText(url);
-        webView.loadUrl(url);
+        if (doNotTrack && (url.startsWith("http://") || url.startsWith("https://"))) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("DNT", "1");
+            headers.put("Sec-GPC", "1");
+            dntPendingUrl = url;
+            webView.loadUrl(url, headers);
+        } else webView.loadUrl(url);
     }
 
     private void loadHome() {
         if (webView == null) return;
         addressBar.setText("");
-        webView.loadUrl(HOME_URL);
+        String home = "English".equals(prefs.getString("language", "Türkçe")) ? HOME_EN_URL : HOME_URL;
+        webView.loadUrl(home);
         if (activeTab >= 0 && activeTab < tabs.size()) {
             tabs.set(activeTab, HOME_URL);
-            saveList("tabs", tabs);
+            if (!privateMode) saveList("tabs", tabs);
         }
     }
 
     private void newTab() {
         tabs.add(HOME_URL);
         activeTab = tabs.size() - 1;
-        saveList("tabs", tabs);
-        prefs.edit().putInt("active_tab", activeTab).apply();
+        if (!privateMode) {
+            saveList("tabs", tabs);
+            prefs.edit().putInt("active_tab", activeTab).apply();
+        }
         loadHome();
-        Toast.makeText(this, "Yeni sekme açıldı", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L("Yeni sekme açıldı", "New tab opened"), Toast.LENGTH_SHORT).show();
     }
 
     private void loadTab(int index) {
         if (tabs.isEmpty()) tabs.add(HOME_URL);
         activeTab = Math.max(0, Math.min(index, tabs.size() - 1));
-        prefs.edit().putInt("active_tab", activeTab).apply();
+        if (!privateMode) prefs.edit().putInt("active_tab", activeTab).apply();
         String url = tabs.get(activeTab);
-        if (url == null || url.isEmpty() || HOME_URL.equals(url)) loadHome();
+        if (url == null || url.isEmpty() || isHomeUrl(url)) loadHome();
         else {
             addressBar.setText(url);
-            webView.loadUrl(url);
+            loadRequestedUrl(url);
         }
     }
 
@@ -367,64 +404,101 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(39), dp(39), Gravity.CENTER);
         frame.addView(icon, lp);
         frame.setOnClickListener(v -> loadHome());
-        frame.setContentDescription("TUR ana sayfa");
+        frame.setContentDescription(L("TUR ana sayfa", "TUR home page"));
         return frame;
     }
 
     private void showMoreMenu() {
         String engine = prefs.getString("search_engine", "Google");
         String[] options = {
-                "Yer imleri",
-                "Geçmiş",
-                "İndirilenler",
-                privateMode ? "Gizli modu kapat" : "Gizli modu aç",
-                "Reklam/izleyici engeli: " + (blockAds ? "Açık" : "Kapalı"),
-                "Arama motoru: " + engine,
-                "Ayarlar"
+                L("Yer imleri", "Bookmarks"),
+                L("Geçmiş", "History"),
+                L("İndirilenler", "Downloads"),
+                privateMode ? L("Gizli modu kapat", "Turn off private mode") : L("Gizli modu aç", "Turn on private mode"),
+                L("Reklam/izleyici engeli: " + (blockAds ? "Açık" : "Kapalı"), "Ad/tracker blocking: " + (blockAds ? "On" : "Off")),
+                L("İzleme sinyali: " + (doNotTrack ? "Açık" : "Kapalı"), "Do Not Track: " + (doNotTrack ? "On" : "Off")),
+                L("Arama motoru: " + engine, "Search engine: " + engine),
+                L("Bu sayfayı paylaş", "Share this page"),
+                L("Yer imlerine ekle", "Add bookmark"),
+                L("Ayarlar", "Settings")
         };
         new AlertDialog.Builder(this)
                 .setTitle("TUR Browser")
                 .setItems(options, (dialog, which) -> {
                     switch (which) {
-                        case 0: showSavedPages("bookmarks", "Yer imleri", true); break;
-                        case 1: showSavedPages("history", "Geçmiş", false); break;
+                        case 0: showSavedPages("bookmarks", L("Yer imleri", "Bookmarks"), true); break;
+                        case 1: showSavedPages("history", L("Geçmiş", "History"), false); break;
                         case 2: showDownloads(); break;
                         case 3: togglePrivateMode(); break;
                         case 4:
                             blockAds = !blockAds;
                             prefs.edit().putBoolean("block_ads", blockAds).apply();
-                            Toast.makeText(this, "İstek engelleme " + (blockAds ? "açık" : "kapalı"), Toast.LENGTH_SHORT).show();
+                            updateModeLabel();
+                            Toast.makeText(this, L("İstek engelleme ", "Request blocking ") + (blockAds ? L("açık", "on") : L("kapalı", "off")), Toast.LENGTH_SHORT).show();
                             break;
-                        case 5: showSearchEngineDialog(); break;
-                        case 6: showSettings(); break;
+                        case 5:
+                            doNotTrack = !doNotTrack;
+                            prefs.edit().putBoolean("do_not_track", doNotTrack).apply();
+                            Toast.makeText(this, L("İzleme sinyali ", "Do Not Track signal ") + (doNotTrack ? L("açık", "on") : L("kapalı", "off")), Toast.LENGTH_SHORT).show();
+                            break;
+                        case 6: showSearchEngineDialog(); break;
+                        case 7: shareCurrentPage(); break;
+                        case 8: saveCurrentBookmark(); break;
+                        case 9: showSettings(); break;
                     }
                 }).show();
     }
 
     private void showSettings() {
-        String[] options = {"Arama motorunu seç", "Reklam ve izleyici engelleme", "Geçmişi temizle", "Önbelleği temizle", "TUR Browser hakkında"};
+        String[] options = {
+                L("Arama motorunu seç", "Choose search engine"),
+                L("Yazı boyutu", "Text size"),
+                L("Uygulama dili", "App language"),
+                L("Reklam ve izleyici engelleme", "Ad and tracker blocking"),
+                L("Do Not Track sinyali", "Do Not Track signal"),
+                L("Güvenlik durumu", "Security status"),
+                L("Geçmişi temizle", "Clear history"),
+                L("Önbelleği temizle", "Clear cache"),
+                L("Tarama verilerini temizle", "Clear browsing data"),
+                L("TUR Browser hakkında", "About TUR Browser")
+        };
         new AlertDialog.Builder(this)
-                .setTitle("Ayarlar")
+                .setTitle(L("Ayarlar", "Settings"))
                 .setItems(options, (dialog, which) -> {
                     switch (which) {
                         case 0: showSearchEngineDialog(); break;
-                        case 1:
+                        case 1: showFontSizeDialog(); break;
+                        case 2: showLanguageDialog(); break;
+                        case 3:
                             blockAds = !blockAds;
                             prefs.edit().putBoolean("block_ads", blockAds).apply();
-                            Toast.makeText(this, "Engelleme " + (blockAds ? "açık" : "kapalı"), Toast.LENGTH_SHORT).show();
-                            break;
-                        case 2:
-                            saveList("history", new ArrayList<>());
-                            Toast.makeText(this, "Geçmiş temizlendi", Toast.LENGTH_SHORT).show();
-                            break;
-                        case 3:
-                            webView.clearCache(true);
-                            Toast.makeText(this, "Önbellek temizlendi", Toast.LENGTH_SHORT).show();
+                            updateModeLabel();
+                            Toast.makeText(this, L("Engelleme ", "Blocking ") + (blockAds ? L("açık", "on") : L("kapalı", "off")), Toast.LENGTH_SHORT).show();
                             break;
                         case 4:
+                            doNotTrack = !doNotTrack;
+                            prefs.edit().putBoolean("do_not_track", doNotTrack).apply();
+                            Toast.makeText(this, L("İzleme sinyali ", "Do Not Track signal ") + (doNotTrack ? L("açık", "on") : L("kapalı", "off")), Toast.LENGTH_SHORT).show();
+                            break;
+                        case 5: showSecurityDialog(); break;
+                        case 6:
+                            saveList("history", new ArrayList<>());
+                            Toast.makeText(this, L("Geçmiş temizlendi", "History cleared"), Toast.LENGTH_SHORT).show();
+                            break;
+                        case 7:
+                            webView.clearCache(true);
+                            Toast.makeText(this, L("Önbellek temizlendi", "Cache cleared"), Toast.LENGTH_SHORT).show();
+                            break;
+                        case 8:
+                            saveList("history", new ArrayList<>());
+                            webView.clearCache(true);
+                            CookieManager.getInstance().removeAllCookies(null);
+                            Toast.makeText(this, L("Geçmiş ve önbellek temizlendi", "History and cache cleared"), Toast.LENGTH_SHORT).show();
+                            break;
+                        case 9:
                             new AlertDialog.Builder(this).setTitle("TUR Browser")
-                                    .setMessage("Turkuaz-mavi T tasarımıyla hafif Android tarayıcısı. VPN özelliği içermez. Reklam/izleyici engelleme temel bir alan adı listesini kullanır.")
-                                    .setPositiveButton("Tamam", null).show();
+                                    .setMessage(L("Turkuaz-mavi T tasarımıyla hafif Android tarayıcısı. VPN özelliği içermez. Reklam/izleyici engelleme temel bir alan adı listesini kullanır.", "A lightweight Android browser with a turquoise-blue T design. No VPN is included. Ad/tracker blocking uses a basic domain list."))
+                                    .setPositiveButton(L("Tamam", "OK"), null).show();
                             break;
                     }
                 }).show();
@@ -441,7 +515,7 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                     Toast.makeText(this, engines[which] + " seçildi", Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("İptal", null)
+                .setNegativeButton(L("İptal", "Cancel"), null)
                 .show();
     }
 
@@ -451,20 +525,20 @@ public class MainActivity extends Activity {
         for (int i = 0; i < items.size(); i++) labels[i] = items.get(i);
         AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(title);
         if (items.isEmpty()) {
-            builder.setMessage("Henüz kayıt yok.");
+            builder.setMessage(L("Henüz kayıt yok.", "Nothing saved yet."));
         } else {
             builder.setItems(labels, (dialog, which) -> loadRequestedUrl(items.get(which)));
         }
         if (canSaveCurrent) {
-            builder.setPositiveButton("Bu sayfayı kaydet", (dialog, which) -> saveCurrentBookmark());
+            builder.setPositiveButton(L("Bu sayfayı kaydet", "Save this page"), (dialog, which) -> saveCurrentBookmark());
         }
         if (!items.isEmpty()) {
-            builder.setNeutralButton("Temizle", (dialog, which) -> {
+            builder.setNeutralButton(L("Temizle", "Clear"), (dialog, which) -> {
                 saveList(key, new ArrayList<>());
                 Toast.makeText(this, title + " temizlendi", Toast.LENGTH_SHORT).show();
             });
         }
-        builder.setNegativeButton("Kapat", null).show();
+        builder.setNegativeButton(L("Kapat", "Close"), null).show();
     }
 
     private void saveCurrentBookmark() {
@@ -474,24 +548,24 @@ public class MainActivity extends Activity {
             return;
         }
         if (url == null || !url.startsWith("http")) {
-            Toast.makeText(this, "Önce bir web sayfası aç", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L("Önce bir web sayfası aç", "Open a webpage first"), Toast.LENGTH_SHORT).show();
             return;
         }
         ArrayList<String> list = readList("bookmarks");
         list.remove(url);
         list.add(0, url);
         saveList("bookmarks", list);
-        Toast.makeText(this, "Yer imlerine eklendi", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L("Yer imlerine eklendi", "Bookmark saved"), Toast.LENGTH_SHORT).show();
     }
 
     private void showDownloads() {
         ArrayList<String> items = readList("downloads");
         String[] labels = new String[items.size()];
         for (int i = 0; i < items.size(); i++) labels[i] = items.get(i);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle("İndirilenler");
-        if (items.isEmpty()) builder.setMessage("Henüz indirme başlatılmadı.");
+        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(L("İndirilenler", "Downloads"));
+        if (items.isEmpty()) builder.setMessage(L("Henüz indirme başlatılmadı.", "No downloads yet."));
         else builder.setItems(labels, (dialog, which) -> Toast.makeText(this, items.get(which), Toast.LENGTH_LONG).show());
-        builder.setNegativeButton("Kapat", null).show();
+        builder.setNegativeButton(L("Kapat", "Close"), null).show();
     }
 
     private void showTabsDialog() {
@@ -499,13 +573,13 @@ public class MainActivity extends Activity {
         for (int i = 0; i < tabs.size(); i++) {
             String url = tabs.get(i);
             labels[i] = (i == activeTab ? "●  " : "○  ") +
-                    (url == null || HOME_URL.equals(url) ? "Yeni sekme" : shortUrl(url));
+                    (url == null || isHomeUrl(url) ? L("Yeni sekme", "New tab") : shortUrl(url));
         }
         new AlertDialog.Builder(this)
-                .setTitle("Sekmeler (" + tabs.size() + ")")
+                .setTitle(L("Sekmeler (", "Tabs (") + tabs.size() + ")")
                 .setItems(labels, (dialog, which) -> loadTab(which))
-                .setPositiveButton("Yeni sekme +", (dialog, which) -> newTab())
-                .setNeutralButton("Diğerlerini kapat", (dialog, which) -> {
+                .setPositiveButton(L("Yeni sekme +", "New tab +"), (dialog, which) -> newTab())
+                .setNeutralButton(L("Diğerlerini kapat", "Close other tabs"), (dialog, which) -> {
                     String keep = tabs.get(activeTab);
                     tabs.clear();
                     tabs.add(keep == null ? HOME_URL : keep);
@@ -534,12 +608,12 @@ public class MainActivity extends Activity {
             cookieManager.setAcceptCookie(false);
             webView.clearCache(true);
             webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-            Toast.makeText(this, "Gizli mod açık · Geçmiş kaydedilmeyecek", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, L("Gizli mod açık · Geçmiş kaydedilmeyecek", "Private mode on · History will not be saved"), Toast.LENGTH_LONG).show();
         } else {
             cookieManager.setAcceptCookie(true);
             webView.clearCache(true);
             webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
-            Toast.makeText(this, "Normal gezinme açık", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L("Normal gezinme açık", "Normal browsing enabled"), Toast.LENGTH_SHORT).show();
         }
         updateModeLabel();
         loadHome();
@@ -548,11 +622,11 @@ public class MainActivity extends Activity {
     private void updateModeLabel() {
         if (modeLabel == null) return;
         if (privateMode) {
-            modeLabel.setText("GİZLİ MOD");
+            modeLabel.setText(L("GİZLİ MOD", "PRIVATE MODE"));
             modeLabel.setTextColor(Color.rgb(105, 66, 180));
             modeLabel.setBackground(round(Color.rgb(243, 235, 255), 18));
         } else {
-            modeLabel.setText(blockAds ? "KORUMA AÇIK" : "HIZLI GEZİN");
+            modeLabel.setText(privateMode ? L("GİZLİ MOD", "PRIVATE MODE") : (blockAds ? L("KORUMA AÇIK", "PROTECTION ON") : L("HIZLI GEZİN", "BROWSE")));
             modeLabel.setTextColor(Color.rgb(7, 91, 180));
             modeLabel.setBackground(round(Color.rgb(228, 249, 252), 18));
         }
@@ -607,6 +681,76 @@ public class MainActivity extends Activity {
         JSONArray array = new JSONArray();
         for (String item : values) array.put(item);
         prefs.edit().putString(key, array.toString()).apply();
+    }
+
+    private void showFontSizeDialog() {
+        int[] sizes = {80, 90, 100, 110, 120, 130, 140};
+        String[] labels = new String[sizes.length];
+        int current = prefs.getInt("text_zoom", 100);
+        int checked = 2;
+        for (int i = 0; i < sizes.length; i++) {
+            labels[i] = sizes[i] + "%";
+            if (sizes[i] == current) checked = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(L("Yazı boyutu", "Text size"))
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    prefs.edit().putInt("text_zoom", sizes[which]).apply();
+                    webView.getSettings().setTextZoom(sizes[which]);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(L("İptal", "Cancel"), null)
+                .show();
+    }
+
+    private void showLanguageDialog() {
+        String[] languages = {"Türkçe", "English"};
+        String current = prefs.getString("language", "Türkçe");
+        int checked = "English".equals(current) ? 1 : 0;
+        new AlertDialog.Builder(this)
+                .setTitle(L("Uygulama dili", "App language"))
+                .setSingleChoiceItems(languages, checked, (dialog, which) -> {
+                    String selected = languages[which];
+                    prefs.edit().putString("language", selected).apply();
+                    dialog.dismiss();
+                    recreate();
+                })
+                .setNegativeButton(L("İptal", "Cancel"), null)
+                .show();
+    }
+
+    private void showSecurityDialog() {
+        String url = webView.getUrl();
+        boolean https = url != null && url.startsWith("https://");
+        String message = L("Güvenli gezinme: ", "Safe Browsing: ")
+                + (Build.VERSION.SDK_INT >= 26 ? L("Android tarafından destekleniyor", "supported by Android") : L("bu Android sürümünde kullanılamıyor", "unavailable on this Android version"))
+                + "\\n" + L("Bağlantı: ", "Connection: ")
+                + (https ? L("HTTPS şifrelemesi kullanıyor", "uses HTTPS encryption") : L("HTTPS doğrulanmadı", "HTTPS not verified"))
+                + "\\n" + L("İzleme sinyali: ", "Do Not Track: ")
+                + (doNotTrack ? L("etkin (siteler uymayabilir)", "enabled (sites may ignore it)") : L("kapalı", "off"));
+        new AlertDialog.Builder(this).setTitle(L("Güvenlik durumu", "Security status"))
+                .setMessage(message).setPositiveButton(L("Tamam", "OK"), null).show();
+    }
+
+    private void shareCurrentPage() {
+        String url = webView == null ? null : webView.getUrl();
+        if (url == null || isHomeUrl(url)) {
+            Toast.makeText(this, L("Paylaşmak için önce bir sayfa aç", "Open a page to share it first"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, url);
+        startActivity(Intent.createChooser(intent, L("Sayfayı paylaş", "Share page")));
+    }
+
+    private String L(String turkish, String english) {
+        return "English".equals(prefs == null ? "Türkçe" : prefs.getString("language", "Türkçe")) ? english : turkish;
+    }
+
+    private boolean isHomeUrl(String url) {
+        return url != null && (HOME_URL.equals(url) || HOME_EN_URL.equals(url) ||
+                url.startsWith("file:///android_asset/home.html") || url.startsWith("file:///android_asset/home_en.html"));
     }
 
     private TextView text(String value, int sp, int color, boolean bold) {
