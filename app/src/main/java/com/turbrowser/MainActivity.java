@@ -197,13 +197,25 @@ public class MainActivity extends Activity {
         modeLabel.setPadding(dp(10), dp(7), dp(10), dp(7));
         modeLabel.setBackground(round(Color.rgb(228, 249, 252), 18));
         header.addView(modeLabel);
+        ImageView settingsShortcut = new ImageView(this);
+        settingsShortcut.setImageResource(R.drawable.ic_settings_gear);
+        settingsShortcut.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        settingsShortcut.setPadding(dp(8), dp(8), dp(8), dp(8));
+        settingsShortcut.setBackground(round(0xFFE6F8FC, 14));
+        settingsShortcut.setContentDescription(L("Ayarları aç", "Open settings"));
+        LinearLayout.LayoutParams settingsShortcutLp = new LinearLayout.LayoutParams(dp(37), dp(37));
+        settingsShortcutLp.leftMargin = dp(8);
+        header.addView(settingsShortcut, settingsShortcutLp);
+        settingsShortcut.setOnClickListener(v -> animateAction(settingsShortcut, this::showSettings));
         root.addView(header, new LinearLayout.LayoutParams(-1, dp(60)));
 
         LinearLayout addressRow = new LinearLayout(this);
         addressRow.setOrientation(LinearLayout.HORIZONTAL);
         addressRow.setGravity(Gravity.CENTER_VERTICAL);
         addressRow.setPadding(dp(14), dp(7), dp(12), dp(7));
-        addressRow.setBackground(round(Color.WHITE, 20));
+        GradientDrawable addressBg = round(Color.WHITE, 20);
+        addressBg.setStroke(dp(1), 0xFFE4EDF5);
+        addressRow.setBackground(addressBg);
         addressRowView = addressRow;
         LinearLayout.LayoutParams addressRowLp = new LinearLayout.LayoutParams(-1, dp(49));
         addressRowLp.setMargins(dp(14), dp(9), dp(14), dp(7));
@@ -224,6 +236,14 @@ public class MainActivity extends Activity {
         addressBar.setSelectAllOnFocus(false);
         addressBar.setImeOptions(EditorInfo.IME_ACTION_GO);
         addressBar.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        addressBar.setOnFocusChangeListener((view, focused) -> {
+            addressRow.animate().scaleX(focused ? 1.012f : 1f).scaleY(focused ? 1.012f : 1f)
+                    .setDuration(180).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            if (addressRow.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) addressRow.getBackground()).setStroke(dp(1),
+                        focused ? Color.rgb(27, 184, 208) : 0xFFE4EDF5);
+            }
+        });
         addressBar.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_SEARCH ||
                     (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
@@ -277,7 +297,7 @@ public class MainActivity extends Activity {
         bottom.setGravity(Gravity.CENTER);
         bottom.setPadding(dp(7), dp(5), dp(7), dp(5));
         bottom.setBackgroundColor(Color.WHITE);
-        bottom.setElevation(dp(8));
+        bottom.setElevation(0f);
 
         bottom.addView(navItem("‹", L("Geri", "Back"), () -> {
             if (webView.canGoBack()) webView.goBack();
@@ -289,7 +309,16 @@ public class MainActivity extends Activity {
         bottom.addView(actionButton(), new LinearLayout.LayoutParams(0, dp(53), 1.15f));
         bottom.addView(tabsButton(), new LinearLayout.LayoutParams(0, dp(53), 1));
         bottom.addView(homeNavItem(), new LinearLayout.LayoutParams(0, dp(53), 1));
-        root.addView(bottom, new LinearLayout.LayoutParams(-1, dp(64)));
+        LinearLayout navigationShell = new LinearLayout(this);
+        navigationShell.setOrientation(LinearLayout.VERTICAL);
+        navigationShell.setBackgroundColor(Color.WHITE);
+        navigationShell.setElevation(dp(11));
+        View navigationAccent = new View(this);
+        navigationAccent.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.rgb(27, 214, 218), Color.rgb(19, 139, 219), Color.rgb(7, 76, 202)}));
+        navigationShell.addView(navigationAccent, new LinearLayout.LayoutParams(-1, dp(2)));
+        navigationShell.addView(bottom, new LinearLayout.LayoutParams(-1, dp(64)));
+        root.addView(navigationShell, new LinearLayout.LayoutParams(-1, dp(66)));
         setContentView(root);
         updateModeLabel();
     }
@@ -355,7 +384,13 @@ public class MainActivity extends Activity {
 
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 progress.setVisibility(View.VISIBLE);
-                view.animate().alpha(0.94f).setDuration(120).start();
+                view.animate().cancel();
+                view.setAlpha(.78f);
+                view.setTranslationY(dp(5));
+                view.setScaleX(.995f);
+                view.setScaleY(.995f);
+                view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(260)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
                 if (isHomeUrl(url)) view.addJavascriptInterface(new BrowserBridge(), "TURNative");
                 else view.removeJavascriptInterface("TURNative");
                 if (url != null && !url.startsWith("file:")) addressBar.setText(url);
@@ -367,7 +402,8 @@ public class MainActivity extends Activity {
 
             @Override public void onPageFinished(WebView view, String url) {
                 progress.setVisibility(View.GONE);
-                view.animate().alpha(1f).setDuration(220).start();
+                view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(240)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
                 if (isHomeUrl(url)) {
                     addressBar.setText("");
                     loadNewsFeed(view);
@@ -487,7 +523,8 @@ public class MainActivity extends Activity {
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_tabs_stacked);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        stack.addView(icon, new FrameLayout.LayoutParams(dp(25), dp(25), Gravity.CENTER));
+        icon.setBackground(round(0xFFEAF6FB, 13));
+        stack.addView(icon, new FrameLayout.LayoutParams(dp(31), dp(29), Gravity.CENTER));
         TextView count = text(String.valueOf(Math.min(99, tabs.size())), 8, Color.WHITE, true);
         count.setGravity(Gravity.CENTER);
         count.setBackground(round(Color.rgb(18,180,199), 20));
@@ -512,7 +549,8 @@ public class MainActivity extends Activity {
         ImageView home = new ImageView(this);
         home.setImageResource(R.drawable.ic_home_filled);
         home.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        item.addView(home, new LinearLayout.LayoutParams(dp(27), dp(29)));
+        home.setBackground(round(0xFFEAF6FB, 13));
+        item.addView(home, new LinearLayout.LayoutParams(dp(31), dp(29)));
         TextView label = text(L("Ana sayfa","Home"), 9, muted, false);
         label.setGravity(Gravity.CENTER);
         item.addView(label);
@@ -524,13 +562,16 @@ public class MainActivity extends Activity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER);
-        TextView glyph = text(icon, 23, Color.rgb(80, 100, 126), false);
+        TextView glyph = text(icon, 23, Color.rgb(65, 103, 136), true);
         glyph.setGravity(Gravity.CENTER);
+        glyph.setBackground(round(0xFFEAF6FB, 13));
         TextView caption = text(label, 9, muted, false);
         caption.setGravity(Gravity.CENTER);
-        item.addView(glyph, new LinearLayout.LayoutParams(-1, dp(29)));
+        LinearLayout.LayoutParams glyphLp = new LinearLayout.LayoutParams(dp(40), dp(29));
+        glyphLp.bottomMargin = dp(1);
+        item.addView(glyph, glyphLp);
         item.addView(caption);
-        item.setBackground(round(Color.WHITE, 16));
+        item.setBackground(round(Color.TRANSPARENT, 16));
         item.setOnClickListener(v -> animateAction(item, action));
         return item;
     }
@@ -543,8 +584,9 @@ public class MainActivity extends Activity {
         actionButtonFrame.setBackground(gradient);
         actionButtonFrame.setElevation(dp(5));
         actionLogo = new ImageView(this);
-        actionLogo.setImageResource(R.drawable.ic_t_brand);
+        actionLogo.setImageResource(R.drawable.ic_settings_gear);
         actionLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        actionLogo.setPadding(dp(9), dp(9), dp(9), dp(9));
         FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(dp(45), dp(45), Gravity.CENTER);
         actionButtonFrame.addView(actionLogo, logoLp);
         actionCloseGlyph = text("×", 36, Color.WHITE, false);
@@ -734,17 +776,26 @@ public class MainActivity extends Activity {
     }
 
     private void animateAction(View view, Runnable action) {
+        if (view == null) { if (action != null) action.run(); return; }
         view.animate().cancel();
-        view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(80).withEndAction(() ->
-                view.animate().scaleX(1f).scaleY(1f).setDuration(130).withEndAction(action).start()
-        ).start();
+        view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+        view.animate().scaleX(.965f).scaleY(.965f).setDuration(85)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> view.animate().scaleX(1f).scaleY(1f).setDuration(175)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(.72f))
+                        .withEndAction(() -> { if (action != null) action.run(); }).start()).start();
     }
 
     private Dialog showModernPage(String title, String subtitle, LinearLayout body) {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setBackgroundColor(Color.rgb(244, 246, 250));
+        page.setBackgroundColor(Color.rgb(242, 246, 251));
+
+        View accent = new View(this);
+        accent.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.rgb(23, 212, 216), Color.rgb(27, 137, 225), Color.rgb(10, 75, 203)}));
+        page.addView(accent, new LinearLayout.LayoutParams(-1, dp(4)));
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
@@ -755,13 +806,19 @@ public class MainActivity extends Activity {
         back.setGravity(Gravity.CENTER);
         back.setBackground(round(0xFFF1F5FA, 18));
         header.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        back.setOnClickListener(v -> dialog.dismiss());
+        back.setOnClickListener(v -> animateAction(back, dialog::dismiss));
 
         LinearLayout heading = new LinearLayout(this);
         heading.setOrientation(LinearLayout.VERTICAL);
         heading.setPadding(dp(12), 0, 0, 0);
-        heading.addView(text(title, 18, ink, true));
-        TextView sub = text(subtitle, 11, muted, false);
+        TextView pageKicker = text("TUR  /  BROWSER", 8, Color.rgb(15, 151, 183), true);
+        pageKicker.setLetterSpacing(.16f);
+        heading.addView(pageKicker);
+        TextView pageTitle = text(title, 18, ink, true);
+        LinearLayout.LayoutParams pageTitleLp = new LinearLayout.LayoutParams(-1, -2);
+        pageTitleLp.topMargin = dp(2);
+        heading.addView(pageTitle, pageTitleLp);
+        TextView sub = text(subtitle, 10, muted, false);
         LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
         subLp.topMargin = dp(3);
         heading.addView(sub, subLp);
@@ -770,15 +827,19 @@ public class MainActivity extends Activity {
         close.setGravity(Gravity.CENTER);
         close.setBackground(round(0xFFF1F5FA, 18));
         header.addView(close, new LinearLayout.LayoutParams(dp(38), dp(38)));
-        close.setOnClickListener(v -> dialog.dismiss());
+        close.setOnClickListener(v -> animateAction(close, dialog::dismiss));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
         scroll.setClipToPadding(false);
         scroll.setPadding(dp(14), dp(13), dp(14), dp(20));
         body.setOrientation(LinearLayout.VERTICAL);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(body, new ScrollView.LayoutParams(-1, -2));
-        page.addView(header, new LinearLayout.LayoutParams(-1, dp(70)));
+        page.addView(header, new LinearLayout.LayoutParams(-1, dp(74)));
+        View separator = new View(this);
+        separator.setBackgroundColor(0xFFE6EDF5);
+        page.addView(separator, new LinearLayout.LayoutParams(-1, dp(1)));
         page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog.setContentView(page);
         dialog.setOnShowListener(d -> {
@@ -787,8 +848,11 @@ public class MainActivity extends Activity {
                 window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
                 window.setLayout(-1, -1);
                 page.setAlpha(0f);
-                page.setTranslationY(dp(14));
-                page.animate().alpha(1f).translationY(0f).setDuration(220).start();
+                page.setTranslationY(dp(18));
+                page.setScaleX(.986f);
+                page.setScaleY(.986f);
+                page.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(280)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.18f, .82f, .25f, 1f)).start();
             }
         });
         dialog.show();
@@ -801,9 +865,17 @@ public class MainActivity extends Activity {
     }
 
     private void sectionLabel(LinearLayout body, String label) {
-        TextView title = text(label.toUpperCase(Locale.ROOT), 10, muted, true);
-        title.setPadding(dp(4), dp(13), dp(4), dp(8));
-        body.addView(title);
+        LinearLayout heading = new LinearLayout(this);
+        heading.setOrientation(LinearLayout.HORIZONTAL);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        View accent = new View(this);
+        accent.setBackground(round(Color.rgb(19, 190, 204), 99));
+        heading.addView(accent, new LinearLayout.LayoutParams(dp(4), dp(15)));
+        TextView title = text(label.toUpperCase(Locale.ROOT), 9, Color.rgb(119, 137, 159), true);
+        title.setLetterSpacing(.14f);
+        title.setPadding(dp(8), dp(14), dp(4), dp(9));
+        heading.addView(title);
+        body.addView(heading);
     }
 
     private void settingRow(LinearLayout body, String icon, String title, String detail, String value, Runnable action) {
@@ -811,12 +883,20 @@ public class MainActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(12), dp(12), dp(12), dp(12));
-        row.setBackground(round(Color.WHITE, 20));
+        GradientDrawable rowBg = round(Color.WHITE, 20);
+        rowBg.setStroke(dp(1), 0xFFE7EEF5);
+        row.setBackground(rowBg);
         row.setElevation(dp(1));
 
-        TextView glyph = text(icon, 20, Color.rgb(38, 110, 157), true);
+        TextView glyph = text(icon, 20, Color.rgb(24, 124, 164), true);
         glyph.setGravity(Gravity.CENTER);
-        glyph.setBackground(round(0xFFE7F8FC, 14));
+        int[] iconSurfaces = {0xFFE3F8FC, 0xFFE7F4FF, 0xFFE9FAF1, 0xFFFFF2E4, 0xFFF0EAFF};
+        int palette = Math.abs(title.hashCode()) % iconSurfaces.length;
+        GradientDrawable glyphBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{iconSurfaces[palette], Color.WHITE});
+        glyphBg.setCornerRadius(dp(15));
+        glyphBg.setStroke(dp(1), 0xFFE8F1F7);
+        glyph.setBackground(glyphBg);
         row.addView(glyph, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         LinearLayout labels = new LinearLayout(this);
@@ -846,6 +926,17 @@ public class MainActivity extends Activity {
         final long revealDelay = Math.min(body.getChildCount() * 22L, 242L);
         row.postDelayed(() -> row.animate().alpha(1f).translationY(0f).setDuration(210)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(), revealDelay);
+        row.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                v.animate().cancel();
+                v.animate().scaleX(.988f).scaleY(.988f).setDuration(90).start();
+            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP ||
+                    event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(150)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(.7f)).start();
+            }
+            return false;
+        });
         row.setOnClickListener(v -> animateAction(row, action));
     } 
 
@@ -1578,7 +1669,7 @@ public class MainActivity extends Activity {
             if (ref[0] != null) ref[0].dismiss();
             newTab();
         }));
-        groupButton.setOnClickListener(v -> createTabGroup(-1));
+        groupButton.setOnClickListener(v -> animateAction(groupButton, () -> createTabGroup(-1)));
 
         HorizontalScrollView groupScroll = new HorizontalScrollView(this);
         groupScroll.setHorizontalScrollBarEnabled(false);
@@ -1615,7 +1706,8 @@ public class MainActivity extends Activity {
             GradientDrawable cardBg = round(Color.WHITE, 21);
             cardBg.setStroke(dp(selected ? 2 : 1), selected ? Color.rgb(20, 183, 205) : Color.rgb(231, 235, 242));
             card.setBackground(cardBg);
-            card.setElevation(dp(selected ? 3 : 1));
+            card.setElevation(dp(selected ? 5 : 1));
+            card.setTranslationZ(dp(selected ? 2 : 0));
 
             LinearLayout titleRow = new LinearLayout(this);
             titleRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1697,6 +1789,16 @@ public class MainActivity extends Activity {
             card.postDelayed(() -> card.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(230)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator()).start(),
                     Math.min(cell * 35L, 280L));
+            card.setOnTouchListener((v, event) -> {
+                if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                    v.animate().scaleX(.985f).scaleY(.985f).setDuration(85).start();
+                } else if (event.getAction() == android.view.MotionEvent.ACTION_UP ||
+                        event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(170)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(.7f)).start();
+                }
+                return false;
+            });
             card.setOnClickListener(v -> animateAction(card, () -> {
                 if (ref[0] != null) ref[0].dismiss();
                 loadTab(tabIndex);
